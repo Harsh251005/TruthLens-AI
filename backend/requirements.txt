@@ -17,11 +17,14 @@ bcrypt==4.0.1
 fastapi-mail==1.6.2
 aiosmtplib==5.1.0
 
-# ── AI Model ───────────────────────────────────────────────
-tensorflow==2.20.0
+# ── AI Model (lightweight TFLite instead of full TensorFlow)
+tflite-runtime==2.14.0
 numpy==2.4.2
 opencv-python-headless==4.13.0.92
 pillow==12.1.1
+
+# ── Model Download from Hugging Face ───────────────────────
+huggingface_hub==0.30.2
 
 # ── EXIF Analysis ──────────────────────────────────────────
 piexif==1.1.3
