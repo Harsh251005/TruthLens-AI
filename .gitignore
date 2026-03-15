@@ -1,0 +1,29 @@
+# ── Secrets ───────────────────────────────
+backend/.env
+
+# ── Large model files ─────────────────────
+backend/*.keras
+backend/*.h5
+backend/*.tflite
+frontend/assets/models/*.tflite
+
+# ── Python ────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.conda/
+*.egg-info/
+
+# ── Flutter/Dart ──────────────────────────
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+frontend/.pub-cache/
+frontend/.packages
+frontend/pubspec.lock
+
+# ── IDE ───────────────────────────────────
+.vscode/
+.idea/
+*.iml
