@@ -12,7 +12,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import io
-import tflite_runtime.interpreter as tflite
+from ai_edge_litert.interpreter import Interpreter
 from huggingface_hub import hf_hub_download
 
 from services.exif_service import analyze_exif
@@ -64,7 +64,7 @@ print("Initializing deepfake detection model...")
 _model_path = _download_model()
 
 # Load TFLite interpreter (lightweight — no full TensorFlow needed)
-_interpreter = tflite.Interpreter(model_path=_model_path)
+_interpreter = Interpreter(model_path=_model_path)
 _interpreter.allocate_tensors()
 
 _input_details  = _interpreter.get_input_details()
