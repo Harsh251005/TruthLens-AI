@@ -15,6 +15,7 @@ class UserModel {
   final String name;
   final String email;
   final String token;
+  final bool isVerified;
 
   /// Which kind of avatar the user has selected.
   /// Values: 'initial' | 'predefined' | 'custom'
@@ -32,6 +33,7 @@ class UserModel {
     required this.token,
     this.avatarType = 'initial',
     this.avatarData,
+    this.isVerified = true,
   });
 
   // ── Deserialise from API / SharedPreferences JSON ─────────────
@@ -45,6 +47,7 @@ class UserModel {
       token:      (json['token']      as String?) ?? '',
       avatarType: (json['avatar_type'] as String?) ?? 'initial',
       avatarData:  json['avatar_data'] as String?,
+      isVerified: (json['is_verified'] as bool?) ?? true,
     );
   }
 
@@ -56,6 +59,7 @@ class UserModel {
     'token':       token,
     'avatar_type': avatarType,
     'avatar_data': avatarData,
+    'is_verified': isVerified,
   };
 
   // ── Return a new UserModel with only the changed fields ───────
@@ -68,6 +72,7 @@ class UserModel {
     String? avatarType,
     String? avatarData,
     bool    clearAvatarData = false,  // pass true to set avatarData → null
+    bool? isVerified,
   }) {
     return UserModel(
       id:         id         ?? this.id,
@@ -76,6 +81,8 @@ class UserModel {
       token:      token      ?? this.token,
       avatarType: avatarType ?? this.avatarType,
       avatarData: clearAvatarData ? null : (avatarData ?? this.avatarData),
+      isVerified: isVerified ?? this.isVerified,
+
     );
   }
 }

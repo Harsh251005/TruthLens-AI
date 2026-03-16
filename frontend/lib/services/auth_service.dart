@@ -55,11 +55,35 @@ class AuthService {
         body: jsonEncode({'email': email, 'password': password}),
       ).timeout(AppConstants.requestTimeout);
 
-      final result = _handleResponse(response);
-      if (result.success && result.user != null) {
-        await StorageService.saveUser(result.user!);
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final user = UserModel.fromJson(body['user'] as Map<String, dynamic>);
+        await StorageService.saveUser(user);
+        return AuthResult(success: true, message: 'Login successful', user: user);
+      } else if (response.statusCode == 403 &&
+          body['detail'] == 'email_not_verified') {
+        // Return special message so Flutter navigates to verify screen
+        // Extract token + email from headers
+        final token = response.headers['x-user-token'] ?? '';
+        final userEmail = response.headers['x-user-email'] ?? email;
+        return AuthResult(
+          success:  false,
+          message:  'email_not_verified',
+          user:     UserModel(
+            id:         0,
+            name:       '',
+            email:      userEmail,
+            token:      token,
+            isVerified: false,
+          ),
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Login failed',
+        );
       }
-      return result;
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -318,5 +342,64 @@ class AuthService {
       return 'Request timed out. Please try again.';
     }
     return 'An unexpected error occurred. Please try again.';
+  }
+
+  Future<AuthResult> verifyEmail({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse(AppConstants.verifyEmailEndpoint),
+        headers: _headers,
+        body: jsonEncode({'email': email, 'code': code}),
+      ).timeout(AppConstants.requestTimeout);
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        final user = UserModel.fromJson(
+            body['user'] as Map<String, dynamic>);
+        await StorageService.saveUser(user);
+        return AuthResult(
+          success: true,
+          message: body['message'] as String? ?? 'Email verified',
+          user:    user,
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Verification failed',
+        );
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+  Future<AuthResult> resendOtp({required String email}) async {
+    try {
+      final response = await http.post(
+        Uri.parse(AppConstants.resendOtpEndpoint),
+        headers: _headers,
+        body: jsonEncode({'email': email}),
+      ).timeout(AppConstants.requestTimeout);
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        return AuthResult(
+          success: true,
+          message: body['message'] as String? ?? 'OTP sent',
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Failed to resend OTP',
+        );
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
   }
 }

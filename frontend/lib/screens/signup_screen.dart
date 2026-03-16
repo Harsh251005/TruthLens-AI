@@ -10,6 +10,7 @@ import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import 'home_screen.dart';
+import 'email_verification_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -52,18 +53,16 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (result.success) {
+    if (result.success && result.user != null) {
       Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder: (_, __, ___) => HomeScreen(user: result.user!),
-          transitionsBuilder: (_, animation, __, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(
+            email: _emailController.text.trim(),
+            user:  result.user!,
+          ),
         ),
             (route) => false,
       );
-    } else {
-      setState(() => _errorMessage = result.message);
     }
   }
 

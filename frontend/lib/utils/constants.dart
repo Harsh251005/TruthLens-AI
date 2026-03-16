@@ -14,6 +14,8 @@ class AppConstants {
   static const String profileEndpoint        = '$baseUrl/api/users/me';
   static const String updateEndpoint         = '$baseUrl/api/users/update';
   static const String updateProfileEndpoint  = '$baseUrl/api/users/update';
+  static const String verifyEmailEndpoint = '$baseUrl/api/auth/verify';
+  static const String resendOtpEndpoint   = '$baseUrl/api/auth/resend';
 
   // ── Avatar Endpoint ───────────────────────────────────────────
   // NEW: PUT /api/users/avatar — saves chosen avatar to DB

@@ -12,6 +12,7 @@ import '../widgets/primary_button.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
+import 'email_verification_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -49,13 +50,24 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    if (result.success) {
+    if (result.success && result.user != null) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => HomeScreen(user: result.user!),
           transitionsBuilder: (_, animation, __, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
+        ),
+      );
+    } else if (result.message == 'email_not_verified' &&
+        result.user != null) {
+      // Unverified user — send to verification screen
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => EmailVerificationScreen(
+            email: result.user!.email,
+            user:  result.user!,
+          ),
         ),
       );
     } else {
