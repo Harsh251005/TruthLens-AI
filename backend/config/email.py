@@ -1,40 +1,34 @@
 # config/email.py
 # ============================================================
-# Email configuration using fastapi-mail.
-# Uses Gmail SMTP to send password reset codes.
+# Email configuration using Resend API.
+# Switched from Gmail SMTP (blocked by Render free tier)
+# to Resend which sends over HTTPS — works on all platforms.
 # ============================================================
 
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
-from dotenv import load_dotenv
 import os
+import resend
+from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Gmail SMTP Configuration ──────────────────────────────────────
-conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("MAIL_USERNAME"),
-    MAIL_PASSWORD=os.getenv("MAIL_PASSWORD"),
-    MAIL_FROM=os.getenv("MAIL_USERNAME"),
-    MAIL_PORT=465,                              # Changed from 587 — Render blocks 587
-    MAIL_SERVER="smtp.gmail.com",
-    MAIL_STARTTLS=False,                        # Disabled — not used with SSL
-    MAIL_SSL_TLS=True,                          # Enabled — port 465 uses SSL
-    USE_CREDENTIALS=True,
-)
+# ── Resend Configuration ──────────────────────────────────────────
+resend.api_key = os.getenv("RESEND_API_KEY")
 
-# FastMail instance — used to send emails
-fast_mail = FastMail(conf)
+# Sender address — must use Resend's default domain until you
+# verify your own domain in the Resend dashboard
+MAIL_FROM = "TruthLens AI <onboarding@resend.dev>"
 
 
 async def send_reset_email(email: str, code: str):
     """
-    Sends a password reset code to the user's email.
+    Sends a password reset code to the user's email via Resend API.
     The code expires in 15 minutes.
     """
-    message = MessageSchema(
-        subject="Password Reset Code — TruthLens AI",
-        recipients=[email],
-        body=f"""
+    params = {
+        "from":    MAIL_FROM,
+        "to":      [email],
+        "subject": "Password Reset Code — TruthLens AI",
+        "html":    f"""
         <html>
         <body style="font-family: Arial, sans-serif; padding: 20px;">
             <h2 style="color: #2D6CDF;">Password Reset Request</h2>
@@ -60,7 +54,6 @@ async def send_reset_email(email: str, code: str):
         </body>
         </html>
         """,
-        subtype=MessageType.html,
-    )
+    }
 
-    await fast_mail.send_message(message)
+    resend.Emails.send(params)
