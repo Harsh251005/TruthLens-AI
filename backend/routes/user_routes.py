@@ -5,11 +5,15 @@
 # Endpoints:
 #   GET  /api/users/me         → fetch current user profile + avatar
 #   PUT  /api/users/update     → update name and/or password
-#   PUT  /api/users/avatar     → NEW: update user avatar
+#   PUT  /api/users/avatar     → update user avatar
 #
-# AVATAR CHANGES (Step 3):
-#   • /me now returns avatar_type + avatar_data fields
-#   • New PUT /avatar endpoint saves avatar to DB
+# FIX (persistence bug):
+#   /me now uses get_current_user (JWT → user_id only) and does
+#   its OWN explicit SELECT that includes avatar_type + avatar_data.
+#   Previously it used get_current_user_from_db whose SELECT was
+#   written before avatar columns existed — so it never returned them,
+#   causing the app to overwrite SharedPreferences with null avatar
+#   on every profile fetch (i.e. every app launch).
 # ============================================================
 
 import base64
@@ -28,24 +32,48 @@ router = APIRouter()
 
 # ── Get Current User ──────────────────────────────────────────────
 @router.get("/me")
-def get_me(current_user: dict = Depends(get_current_user_from_db)):
+def get_me(user_id: int = Depends(get_current_user)):
     """
     Protected route — returns the logged-in user's full profile,
     including avatar_type and avatar_data.
-    Requires: Authorization: Bearer <token> header.
+
+    Uses get_current_user (JWT → user_id) then does its own SELECT
+    so it always includes all columns — including newly added ones
+    like avatar_type and avatar_data.
     """
-    return {
-        "message": "Profile fetched successfully",
-        "user": {
-            "id":          current_user["id"],
-            "name":        current_user["name"],
-            "email":       current_user["email"],
-            "created_at":  str(current_user["created_at"]),
-            # Avatar fields — will be None/initial for users who haven't set one
-            "avatar_type": current_user.get("avatar_type", "initial"),
-            "avatar_data": current_user.get("avatar_data"),
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Explicit SELECT — always includes avatar columns
+        cursor.execute(
+            "SELECT id, name, email, created_at, avatar_type, avatar_data "
+            "FROM users WHERE id = %s",
+            (user_id,)
+        )
+        user = cursor.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {
+            "message": "Profile fetched successfully",
+            "user": {
+                "id":          user["id"],
+                "name":        user["name"],
+                "email":       user["email"],
+                "created_at":  str(user["created_at"]),
+                "avatar_type": user.get("avatar_type", "initial"),
+                "avatar_data": user.get("avatar_data"),   # None if not set
+            }
         }
-    }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
 
 
 # ── Update Profile ────────────────────────────────────────────────
@@ -62,7 +90,6 @@ def update_profile(
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Fetch current user from DB
         cursor.execute(
             "SELECT id, name, email, password, avatar_type, avatar_data "
             "FROM users WHERE id = %s",
@@ -98,7 +125,10 @@ def update_profile(
             values.append(hash_password(data.new_password))
 
         if not updates:
-            raise HTTPException(status_code=400, detail="No fields provided to update")
+            raise HTTPException(
+                status_code=400,
+                detail="No fields provided to update"
+            )
 
         values.append(user_id)
         cursor.execute(
@@ -130,7 +160,7 @@ def update_profile(
         conn.close()
 
 
-# ── Update Avatar — NEW ───────────────────────────────────────────
+# ── Update Avatar ─────────────────────────────────────────────────
 @router.put("/avatar", response_model=UpdateAvatarResponse)
 def update_avatar(
     data: UpdateAvatarRequest,
@@ -142,25 +172,18 @@ def update_avatar(
     Request body:
       {
         "avatar_type": "initial" | "predefined" | "custom",
-        "avatar_data": null | "<avatar_id>" | "<base64_jpeg_string>"
+        "avatar_data": null | "<avatar_id>"
       }
-
-    Validation rules:
-      • 'initial'    → avatar_data must be null (resets to letter avatar)
-      • 'predefined' → avatar_data must be a non-empty string (the avatar ID)
-      • 'custom'     → avatar_data must be a valid base64 string
-                       and must not exceed 5MB decoded
     """
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # ── Validate based on avatar_type ──────────────────────
         avatar_type = data.avatar_type
         avatar_data = data.avatar_data
 
         if avatar_type == "initial":
-            # Reset to default — clear any stored avatar data
+            # Reset — clear stored avatar data
             avatar_data = None
 
         elif avatar_type == "predefined":
@@ -171,28 +194,6 @@ def update_avatar(
                     detail="avatar_data (avatar ID) is required for predefined avatars"
                 )
             avatar_data = avatar_data.strip()
-
-        elif avatar_type == "custom":
-            # Must have base64 data and must decode successfully
-            if not avatar_data:
-                raise HTTPException(
-                    status_code=400,
-                    detail="avatar_data (base64 image) is required for custom avatars"
-                )
-            try:
-                decoded = base64.b64decode(avatar_data)
-            except Exception:
-                raise HTTPException(
-                    status_code=400,
-                    detail="avatar_data is not valid base64"
-                )
-            # Enforce 5MB limit for decoded image size
-            max_bytes = 5 * 1024 * 1024
-            if len(decoded) > max_bytes:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Image too large. Maximum allowed size is 5MB."
-                )
 
         # ── Save to DB ─────────────────────────────────────────
         cursor.execute(
