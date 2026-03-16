@@ -13,6 +13,7 @@ import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
 import 'login_screen.dart';
+import '../models/user_model.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -102,16 +103,32 @@ class _ProfileScreenState extends State<ProfileScreen>
         name: _nameController.text.trim());
 
     if (!mounted) return;
-    setState(() {
-      _isUpdatingName = false;
-      if (result.success) {
-        _userName      = _nameController.text.trim();
-        _nameSuccess   = 'Name updated successfully!';
-        _isEditingName = false;
-      } else {
-        _nameError = result.message;
+
+    if (result.success) {
+      // Save updated name to SharedPreferences so home screen sees it
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser != null) {
+        await StorageService.saveUser(
+          UserModel(
+            id:    savedUser.id,
+            name:  _nameController.text.trim(),
+            email: savedUser.email,
+            token: savedUser.token,
+          ),
+        );
       }
-    });
+      setState(() {
+        _isUpdatingName = false;
+        _userName       = _nameController.text.trim();
+        _nameSuccess    = 'Name updated successfully!';
+        _isEditingName  = false;
+      });
+    } else {
+      setState(() {
+        _isUpdatingName = false;
+        _nameError      = result.message;
+      });
+    }
   }
 
   // ── Update password ───────────────────────────────────────────

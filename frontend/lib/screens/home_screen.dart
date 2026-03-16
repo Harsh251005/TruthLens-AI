@@ -11,6 +11,7 @@ import 'profile_screen.dart';
 import 'scan_screen.dart';
 import 'history_screen.dart';
 import 'about_screen.dart';
+import '../services/storage_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -24,10 +25,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final _detectionService = DetectionService();
   ScanStats? _stats;
   bool _isLoadingStats = true;
+  late String _displayName;
 
   @override
   void initState() {
     super.initState();
+    _displayName = widget.user.name;
     _loadStats();
   }
 
@@ -38,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() { _stats = stats; _isLoadingStats = false; });
   }
 
+  Future<void> _refreshUser() async {
+    final savedUser = await StorageService.getSavedUser();
+    if (!mounted || savedUser == null) return;
+    setState(() => _displayName = savedUser.name);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,11 +72,16 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const AboutScreen()),
             ),
           ),
+          // In appBar actions:
           IconButton(
             icon: const Icon(Icons.person_outline, color: AppTheme.primary),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ProfileScreen()),
-            ),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+              // Reload user data when returning from profile
+              if (mounted) _refreshUser();
+            },
           ),
         ],
       ),
@@ -120,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Hello, ${widget.user.name} 👋',
+                Text('Hello, $_displayName 👋',
                     style: const TextStyle(fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary)),
@@ -399,11 +412,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(builder: (_) => const HistoryScreen())),
             )),
             const SizedBox(width: 12),
+            // In _buildQuickActions:
             Expanded(child: _buildActionTile(
               icon: Icons.person_outline, label: 'My Profile',
               subtitle: 'Edit account', color: AppTheme.success,
-              onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen())),
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+                if (mounted) _refreshUser();
+              },
             )),
           ],
         ),

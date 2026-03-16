@@ -193,7 +193,7 @@ class AuthService {
         headers: _headers,
         body: jsonEncode({'email': email}),
       )
-          .timeout(AppConstants.requestTimeout);
+          .timeout(AppConstants.emailTimeout);
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
 

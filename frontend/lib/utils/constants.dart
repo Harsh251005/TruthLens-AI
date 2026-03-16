@@ -6,33 +6,33 @@
 
 class AppConstants {
   // ── API Base URL ─────────────────────────────────────────────
-  // Update this if your IP changes (run ipconfig to check)
-  static const String baseUrl = 'http://192.168.1.39:8000/api';
+  static const String baseUrl = 'https://truthlens-backend-44mg.onrender.com';
 
   // ── Auth Endpoints ────────────────────────────────────────────
-  static const String loginEndpoint          = '$baseUrl/auth/login';
-  static const String signupEndpoint         = '$baseUrl/auth/signup';
-  static const String profileEndpoint        = '$baseUrl/users/me';
-  static const String updateEndpoint         = '$baseUrl/users/update';
-  static const String updateProfileEndpoint  = '$baseUrl/users/update';
+  static const String loginEndpoint          = '$baseUrl/api/auth/login';
+  static const String signupEndpoint         = '$baseUrl/api/auth/signup';
+  static const String profileEndpoint        = '$baseUrl/api/users/me';
+  static const String updateEndpoint         = '$baseUrl/api/users/update';
+  static const String updateProfileEndpoint  = '$baseUrl/api/users/update';
 
   // ── Password Endpoints ────────────────────────────────────────
-  static const String forgotEndpoint         = '$baseUrl/password/forgot';
-  static const String resetEndpoint          = '$baseUrl/password/reset';
-  static const String forgotPasswordEndpoint = '$baseUrl/password/forgot';
-  static const String resetPasswordEndpoint  = '$baseUrl/password/reset';
+  static const String forgotEndpoint         = '$baseUrl/api/password/forgot';
+  static const String resetEndpoint          = '$baseUrl/api/password/reset';
+  static const String forgotPasswordEndpoint = '$baseUrl/api/password/forgot';
+  static const String resetPasswordEndpoint  = '$baseUrl/api/password/reset';
 
   // ── Detection Endpoints ───────────────────────────────────────
-  static const String detectEndpoint  = '$baseUrl/detect/';
-  static const String historyEndpoint = '$baseUrl/detect/history';
-  static const String statsEndpoint   = '$baseUrl/detect/stats';
+  static const String detectEndpoint  = '$baseUrl/api/detect/';
+  static const String historyEndpoint = '$baseUrl/api/detect/history';
+  static const String statsEndpoint   = '$baseUrl/api/detect/stats';
 
   /// Builds delete URL for a single scan by ID
   static String deleteScanEndpoint(int scanId) =>
-      '$baseUrl/detect/history/$scanId';
+      '$baseUrl/api/detect/history/$scanId';
 
   // ── Timeouts ──────────────────────────────────────────────────
   static const Duration requestTimeout = Duration(seconds: 30);
+  static const Duration emailTimeout       = Duration(seconds: 60); // ← ADD
 
   // ── Validation ────────────────────────────────────────────────
   static const int minPasswordLength = 6;
