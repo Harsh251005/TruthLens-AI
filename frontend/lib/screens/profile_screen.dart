@@ -30,6 +30,7 @@ import '../widgets/primary_button.dart';
 import 'login_screen.dart';
 import 'dart:typed_data';
 import 'package:custom_image_crop/custom_image_crop.dart';
+import 'badges_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -676,6 +677,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         _buildSectionLabel('Display Name'),
         const SizedBox(height: 12),
         _buildNameSection(),
+        const SizedBox(height: 16),
+        _buildBadgesRow(),
+        const SizedBox(height: 24),
+        _buildSectionLabel('Email Address'),
         const SizedBox(height: 24),
         _buildSectionLabel('Email Address'),
         const SizedBox(height: 12),
@@ -817,6 +822,43 @@ class _ProfileScreenState extends State<ProfileScreen>
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusM)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBadgesRow() {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const BadgesScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(AppTheme.paddingL),
+        decoration: AppTheme.cardDecoration(
+            borderColor: AppTheme.accent.withOpacity(0.3)),
+        child: Row(children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color:        AppTheme.accent.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            ),
+            child: const Icon(Icons.emoji_events_rounded,
+                color: AppTheme.accent, size: 22),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Badges & Streaks',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary)),
+              Text('View your achievements',
+                  style: TextStyle(fontSize: 12,
+                      color: AppTheme.textSecondary)),
+            ]),
+          ),
+          const Icon(Icons.chevron_right,
+              color: AppTheme.textSecondary, size: 20),
+        ]),
       ),
     );
   }
