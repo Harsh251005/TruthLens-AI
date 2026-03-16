@@ -15,6 +15,10 @@ class AppConstants {
   static const String updateEndpoint         = '$baseUrl/api/users/update';
   static const String updateProfileEndpoint  = '$baseUrl/api/users/update';
 
+  // ── Avatar Endpoint ───────────────────────────────────────────
+  // NEW: PUT /api/users/avatar — saves chosen avatar to DB
+  static const String updateAvatarEndpoint   = '$baseUrl/api/users/avatar';
+
   // ── Password Endpoints ────────────────────────────────────────
   static const String forgotEndpoint         = '$baseUrl/api/password/forgot';
   static const String resetEndpoint          = '$baseUrl/api/password/reset';
@@ -25,6 +29,7 @@ class AppConstants {
   static const String detectEndpoint  = '$baseUrl/api/detect/';
   static const String historyEndpoint = '$baseUrl/api/detect/history';
   static const String statsEndpoint   = '$baseUrl/api/detect/stats';
+  static const String analyticsEndpoint = '$baseUrl/api/detect/analytics';
 
   /// Builds delete URL for a single scan by ID
   static String deleteScanEndpoint(int scanId) =>
@@ -32,7 +37,7 @@ class AppConstants {
 
   // ── Timeouts ──────────────────────────────────────────────────
   static const Duration requestTimeout = Duration(seconds: 30);
-  static const Duration emailTimeout       = Duration(seconds: 60); // ← ADD
+  static const Duration emailTimeout   = Duration(seconds: 60);
 
   // ── Validation ────────────────────────────────────────────────
   static const int minPasswordLength = 6;

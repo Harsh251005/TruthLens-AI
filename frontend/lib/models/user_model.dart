@@ -1,32 +1,81 @@
 // models/user_model.dart
 // ============================================================
-// Represents the User object returned by the backend API.
-// token is optional because the profile endpoint doesn't return it.
+// UserModel — represents the logged-in user across the app.
+//
+// AVATAR CHANGES (Step 4):
+//   • Added avatarType and avatarData fields
+//   • fromJson() reads avatar fields gracefully (nullable)
+//   • toJson() serialises avatar fields for SharedPreferences
+//   • copyWith() lets callers update only avatar without
+//     rebuilding the entire object
 // ============================================================
 
 class UserModel {
-  final int id;
+  final int    id;
   final String name;
   final String email;
-  final String token; // JWT token — empty string for profile responses
+  final String token;
+
+  /// Which kind of avatar the user has selected.
+  /// Values: 'initial' | 'predefined' | 'custom'
+  final String avatarType;
+
+  /// For 'predefined': the avatar ID string (e.g. "fox", "robot").
+  /// For 'custom':     base64-encoded JPEG string of the uploaded photo.
+  /// For 'initial':    null — the app will render the first letter of name.
+  final String? avatarData;
 
   const UserModel({
     required this.id,
     required this.name,
     required this.email,
-    this.token = '', // Default to empty for profile endpoint
+    required this.token,
+    this.avatarType = 'initial',
+    this.avatarData,
   });
 
-  /// Creates a UserModel from the JSON map returned by the API
+  // ── Deserialise from API / SharedPreferences JSON ─────────────
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id:    json['id']    as int,
-      name:  json['name']  as String,
-      email: json['email'] as String,
-      token: json['token'] as String? ?? '', // token is optional
+      id:         json['id']          as int,
+      name:       json['name']        as String,
+      email:      json['email']       as String,
+      // token may be absent in /me responses — fall back to empty string.
+      // StorageService always merges the saved token when restoring.
+      token:      (json['token']      as String?) ?? '',
+      avatarType: (json['avatar_type'] as String?) ?? 'initial',
+      avatarData:  json['avatar_data'] as String?,
     );
   }
 
-  @override
-  String toString() => 'UserModel(id: $id, name: $name, email: $email)';
+  // ── Serialise to JSON for SharedPreferences storage ───────────
+  Map<String, dynamic> toJson() => {
+    'id':          id,
+    'name':        name,
+    'email':       email,
+    'token':       token,
+    'avatar_type': avatarType,
+    'avatar_data': avatarData,
+  };
+
+  // ── Return a new UserModel with only the changed fields ───────
+  // Usage: savedUser.copyWith(avatarType: 'predefined', avatarData: 'fox')
+  UserModel copyWith({
+    int?    id,
+    String? name,
+    String? email,
+    String? token,
+    String? avatarType,
+    String? avatarData,
+    bool    clearAvatarData = false,  // pass true to set avatarData → null
+  }) {
+    return UserModel(
+      id:         id         ?? this.id,
+      name:       name       ?? this.name,
+      email:      email      ?? this.email,
+      token:      token      ?? this.token,
+      avatarType: avatarType ?? this.avatarType,
+      avatarData: clearAvatarData ? null : (avatarData ?? this.avatarData),
+    );
+  }
 }

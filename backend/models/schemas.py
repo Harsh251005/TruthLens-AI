@@ -150,3 +150,29 @@ class StatsResponse(BaseModel):
     total_real:   int
     total_fake:   int
     last_scanned: Optional[str] = None
+
+# ── Analytics ─────────────────────────────────────────────────────
+
+class DailyActivity(BaseModel):
+    """Scan counts for a single day — used in weekly bar chart."""
+    date:       str   # 'Mon', 'Tue' etc
+    total:      int
+    real_count: int
+    fake_count: int
+
+class AnalyticsResponse(BaseModel):
+    """Rich analytics data for the dashboard screen."""
+    # Core counts
+    total_scans:         int
+    total_real:          int
+    total_fake:          int
+    # Confidence averages
+    avg_confidence_real: float
+    avg_confidence_fake: float
+    # Weekly activity — always 7 items (Mon→Sun)
+    daily_activity:      List[DailyActivity]
+    # Last 10 verdicts as strings e.g. ['REAL','FAKE','REAL',...]
+    verdict_trend:       List[str]
+    # Personalized insight string generated on backend
+    insight:             str
+    last_scanned:        Optional[str] = None

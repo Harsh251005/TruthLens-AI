@@ -16,6 +16,8 @@ from models.schemas import (
 )
 from config.database import get_db_connection
 from services.detector import predict
+from datetime import datetime, timedelta
+from models.schemas import AnalyticsResponse, DailyActivity
 
 router = APIRouter()
 
@@ -198,6 +200,120 @@ def get_stats(user_id: int = Depends(get_current_user)):
             total_real   = row["total_real"]   or 0,
             total_fake   = row["total_fake"]   or 0,
             last_scanned = str(row["last_scanned"]) if row["last_scanned"] else None,
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
+# ── Analytics ─────────────────────────────────────────────────────
+# Add this import at the top of detect_routes.py if not present:
+# from datetime import datetime, timedelta
+# from models.schemas import AnalyticsResponse, DailyActivity
+
+@router.get("/analytics", response_model=AnalyticsResponse)
+def get_analytics(user_id: int = Depends(get_current_user)):
+    """
+    Returns rich analytics data for the dashboard screen.
+    Computes everything from the existing scans table — no new DB columns.
+    """
+    from datetime import datetime, timedelta
+    from models.schemas import AnalyticsResponse, DailyActivity
+
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # ── Core counts ───────────────────────────────────────────
+        cursor.execute(
+            """SELECT
+                COUNT(*)                                          AS total_scans,
+                SUM(CASE WHEN verdict='REAL' THEN 1 ELSE 0 END)  AS total_real,
+                SUM(CASE WHEN verdict='FAKE' THEN 1 ELSE 0 END)  AS total_fake,
+                AVG(CASE WHEN verdict='REAL' THEN confidence END) AS avg_conf_real,
+                AVG(CASE WHEN verdict='FAKE' THEN confidence END) AS avg_conf_fake,
+                MAX(scanned_at)                                   AS last_scanned
+               FROM scans WHERE user_id = %s""",
+            (user_id,)
+        )
+        core = cursor.fetchone()
+
+        total_scans         = core["total_scans"]  or 0
+        total_real          = core["total_real"]   or 0
+        total_fake          = core["total_fake"]   or 0
+        avg_confidence_real = round(float(core["avg_conf_real"] or 0), 1)
+        avg_confidence_fake = round(float(core["avg_conf_fake"] or 0), 1)
+        last_scanned        = str(core["last_scanned"]) if core["last_scanned"] else None
+
+        # ── Weekly activity — last 7 days ─────────────────────────
+        # Build a list of the last 7 dates so we always return 7 bars
+        today      = datetime.utcnow().date()
+        day_labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+        week_dates = [(today - timedelta(days=i)) for i in range(6, -1, -1)]
+
+        cursor.execute(
+            """SELECT
+                DATE(scanned_at)                                      AS scan_date,
+                COUNT(*)                                              AS total,
+                SUM(CASE WHEN verdict='REAL' THEN 1 ELSE 0 END)       AS real_count,
+                SUM(CASE WHEN verdict='FAKE' THEN 1 ELSE 0 END)       AS fake_count
+               FROM scans
+               WHERE user_id = %s AND scanned_at >= %s
+               GROUP BY DATE(scanned_at)""",
+            (user_id, week_dates[0])
+        )
+        raw_week = {row["scan_date"]: row for row in cursor.fetchall()}
+
+        daily_activity = []
+        for d in week_dates:
+            row = raw_week.get(d)
+            daily_activity.append(DailyActivity(
+                date       = day_labels[d.weekday()],
+                total      = int(row["total"])      if row else 0,
+                real_count = int(row["real_count"]) if row else 0,
+                fake_count = int(row["fake_count"]) if row else 0,
+            ))
+
+        # ── Last 10 verdict trend ─────────────────────────────────
+        cursor.execute(
+            """SELECT verdict FROM scans
+               WHERE user_id = %s
+               ORDER BY scanned_at DESC LIMIT 10""",
+            (user_id,)
+        )
+        # Reverse so oldest→newest (left→right on screen)
+        verdict_trend = [r["verdict"] for r in cursor.fetchall()][::-1]
+
+        # ── Personalized insight ──────────────────────────────────
+        # A short motivating message based on the user's actual data
+        if total_scans == 0:
+            insight = "Run your first scan to start building your analytics!"
+        elif total_fake == 0:
+            insight = f"You've scanned {total_scans} image(s) — all authentic so far. Stay vigilant!"
+        elif total_fake >= 10:
+            insight = f"Impressive! You've caught {total_fake} deepfakes. You're a pro detector! 🎯"
+        elif total_scans >= 20:
+            fake_pct = round((total_fake / total_scans) * 100)
+            insight  = f"{fake_pct}% of images you scanned were deepfakes. The internet needs you! 🛡️"
+        elif len(verdict_trend) >= 3 and all(v == 'FAKE' for v in verdict_trend[-3:]):
+            insight = "Last 3 scans were all deepfakes — stay alert out there! 🚨"
+        elif len(verdict_trend) >= 3 and all(v == 'REAL' for v in verdict_trend[-3:]):
+            insight = "Last 3 scans were all authentic. Your sources look trustworthy! ✅"
+        else:
+            insight = f"You've caught {total_fake} deepfake(s) out of {total_scans} scan(s). Keep going! 💪"
+
+        return AnalyticsResponse(
+            total_scans         = total_scans,
+            total_real          = total_real,
+            total_fake          = total_fake,
+            avg_confidence_real = avg_confidence_real,
+            avg_confidence_fake = avg_confidence_fake,
+            daily_activity      = daily_activity,
+            verdict_trend       = verdict_trend,
+            insight             = insight,
+            last_scanned        = last_scanned,
         )
 
     except Exception as e:

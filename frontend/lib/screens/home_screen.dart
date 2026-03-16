@@ -12,6 +12,7 @@ import 'scan_screen.dart';
 import 'history_screen.dart';
 import 'about_screen.dart';
 import '../services/storage_service.dart';
+import 'analytics_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -394,7 +395,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Quick Actions ──────────────────────────────────────────────
   Widget _buildQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -412,7 +412,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   MaterialPageRoute(builder: (_) => const HistoryScreen())),
             )),
             const SizedBox(width: 12),
-            // In _buildQuickActions:
             Expanded(child: _buildActionTile(
               icon: Icons.person_outline, label: 'My Profile',
               subtitle: 'Edit account', color: AppTheme.success,
@@ -425,6 +424,28 @@ class _HomeScreenState extends State<HomeScreen> {
             )),
           ],
         ),
+
+        // ── ADD THIS ──────────────────────────────────────────────
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildActionTile(
+              icon:     Icons.bar_chart_rounded,
+              label:    'Analytics',
+              subtitle: 'Your insights',
+              color:    AppTheme.primary,
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+              ),
+            )),
+            const SizedBox(width: 12),
+            // Empty expanded keeps the tile half-width like the others
+            // You can fill this later with another quick action
+            const Expanded(child: SizedBox()),
+          ],
+        ),
+        // ── END ADD ───────────────────────────────────────────────
+
       ],
     );
   }

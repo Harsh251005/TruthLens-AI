@@ -1,78 +1,128 @@
 // services/storage_service.dart
 // ============================================================
-// Handles saving, reading and clearing user session data
-// locally on the device using shared_preferences.
-// Called after login/signup and on app launch.
+// StorageService — persists user session data locally using
+// SharedPreferences so the user stays logged in between app
+// restarts.
+//
+// AVATAR CHANGES (Step 5):
+//   • saveUser() now serialises avatarType + avatarData
+//   • getSavedUser() restores avatar fields on app start
+//   • updateAvatar() lets profile/home screens update avatar
+//     locally without a full re-login
+//
+// Key layout in SharedPreferences:
+//   user_id          → int
+//   user_name        → String
+//   user_email       → String
+//   user_token       → String
+//   user_avatar_type → String  ('initial' | 'predefined' | 'custom')
+//   user_avatar_data → String? (avatar ID or base64; absent for 'initial')
 // ============================================================
 
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class StorageService {
-  // ── Storage Keys ──────────────────────────────────────────────
-  // Using constants avoids typos when reading/writing
-  static const String _keyToken          = 'auth_token';
-  static const String _keyId             = 'user_id';
-  static const String _keyName           = 'user_name';
-  static const String _keyEmail          = 'user_email';
-  static const String _keyOnboarding     = 'has_seen_onboarding';
 
-  // ── Save User Session ─────────────────────────────────────────
-  /// Saves user info + JWT token to device storage after login/signup
+  // ── SharedPreferences keys ─────────────────────────────────────
+  static const _kId          = 'user_id';
+  static const _kName        = 'user_name';
+  static const _kEmail       = 'user_email';
+  static const _kToken       = 'user_token';
+  static const _kAvatarType  = 'user_avatar_type';
+  static const _kAvatarData  = 'user_avatar_data';
+
+
+  // ── Save / overwrite the full user session ────────────────────
   static Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyToken, user.token);
-    await prefs.setInt(_keyId,       user.id);
-    await prefs.setString(_keyName,  user.name);
-    await prefs.setString(_keyEmail, user.email);
+
+    await prefs.setInt   (_kId,    user.id);
+    await prefs.setString(_kName,  user.name);
+    await prefs.setString(_kEmail, user.email);
+    await prefs.setString(_kToken, user.token);
+    await prefs.setString(_kAvatarType, user.avatarType);
+
+    // Only write avatar_data when it has a value; remove it when null
+    // (e.g. when user resets to initial avatar)
+    if (user.avatarData != null) {
+      await prefs.setString(_kAvatarData, user.avatarData!);
+    } else {
+      await prefs.remove(_kAvatarData);
+    }
   }
 
-  // ── Read Saved User ───────────────────────────────────────────
-  /// Returns saved UserModel if a session exists, null otherwise
+
+  // ── Restore the saved user on app start ───────────────────────
   static Future<UserModel?> getSavedUser() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final token = prefs.getString(_keyToken);
-    final id    = prefs.getInt(_keyId);
-    final name  = prefs.getString(_keyName);
-    final email = prefs.getString(_keyEmail);
+    final id    = prefs.getInt(_kId);
+    final name  = prefs.getString(_kName);
+    final email = prefs.getString(_kEmail);
+    final token = prefs.getString(_kToken);
 
-    // If any field is missing, no valid session exists
-    if (token == null || id == null || name == null || email == null) {
+    // If any core field is missing the user isn't logged in
+    if (id == null || name == null || email == null || token == null) {
       return null;
     }
 
-    return UserModel(id: id, name: name, email: email, token: token);
+    return UserModel(
+      id:         id,
+      name:       name,
+      email:      email,
+      token:      token,
+      avatarType: prefs.getString(_kAvatarType) ?? 'initial',
+      avatarData: prefs.getString(_kAvatarData),   // null if key absent
+    );
   }
 
-  // ── Clear Session ─────────────────────────────────────────────
-  /// Removes all saved user data — called on logout
+
+  // ── Update ONLY the avatar fields (used after avatar pick) ────
+  // Avoids re-saving the whole user just for an avatar change.
+  static Future<void> updateAvatar({
+    required String avatarType,
+    String?         avatarData,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kAvatarType, avatarType);
+    if (avatarData != null) {
+      await prefs.setString(_kAvatarData, avatarData);
+    } else {
+      await prefs.remove(_kAvatarData);
+    }
+  }
+
+
+  // ── Update ONLY the display name ──────────────────────────────
+  static Future<void> updateName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kName, name);
+  }
+
+
+  // ── Clear everything on logout ────────────────────────────────
   static Future<void> clearUser() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyToken);
-    await prefs.remove(_keyId);
-    await prefs.remove(_keyName);
-    await prefs.remove(_keyEmail);
-  }
-
-  // ── Check if Logged In ────────────────────────────────────────
-  /// Quick check — returns true if a token is saved
-  static Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_keyToken) != null;
+    await prefs.remove(_kId);
+    await prefs.remove(_kName);
+    await prefs.remove(_kEmail);
+    await prefs.remove(_kToken);
+    await prefs.remove(_kAvatarType);
+    await prefs.remove(_kAvatarData);
   }
 
   // ── Onboarding ────────────────────────────────────────────────
+  // Tracks whether the user has seen the onboarding screen.
+  static const _kOnboarding = 'has_seen_onboarding';
 
-  /// Returns true if the user has already seen onboarding
-  static Future<bool> hasSeenOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyOnboarding) ?? false;
-  }
-
-  /// Marks onboarding as completed — never shown again
   static Future<void> setOnboardingSeen() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyOnboarding, true);
+    await prefs.setBool(_kOnboarding, true);
+  }
+
+  static Future<bool> hasSeenOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kOnboarding) ?? false;
   }
 }

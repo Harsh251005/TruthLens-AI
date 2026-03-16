@@ -336,3 +336,111 @@ class DetectionService {
     return 'An unexpected error occurred. Please try again.';
   }
 }
+
+// ================================================================
+// ADD to detection_service.dart
+//
+// 1. Add this model class anywhere near the other model classes
+//    (e.g. after ScanStats)
+//
+// 2. Add the getAnalytics() method inside the DetectionService class
+//
+// 3. Add this constant to constants.dart:
+//    static const String analyticsEndpoint = '$baseUrl/api/detect/analytics';
+// ================================================================
+
+
+// ── ADD this model class ─────────────────────────────────────────
+
+class DailyActivity {
+  final String date;        // 'Mon', 'Tue' etc
+  final int    total;
+  final int    realCount;
+  final int    fakeCount;
+
+  const DailyActivity({
+    required this.date,
+    required this.total,
+    required this.realCount,
+    required this.fakeCount,
+  });
+
+  factory DailyActivity.fromJson(Map<String, dynamic> json) => DailyActivity(
+    date:       json['date']       as String,
+    total:      json['total']      as int,
+    realCount:  json['real_count'] as int,
+    fakeCount:  json['fake_count'] as int,
+  );
+}
+
+class AnalyticsData {
+  final int              totalScans;
+  final int              totalReal;
+  final int              totalFake;
+  final double           avgConfidenceReal;
+  final double           avgConfidenceFake;
+  final List<DailyActivity> dailyActivity;
+  final List<String>     verdictTrend;
+  final String           insight;
+  final String?          lastScanned;
+
+  const AnalyticsData({
+    required this.totalScans,
+    required this.totalReal,
+    required this.totalFake,
+    required this.avgConfidenceReal,
+    required this.avgConfidenceFake,
+    required this.dailyActivity,
+    required this.verdictTrend,
+    required this.insight,
+    this.lastScanned,
+  });
+
+  factory AnalyticsData.fromJson(Map<String, dynamic> json) => AnalyticsData(
+    totalScans:        json['total_scans']          as int,
+    totalReal:         json['total_real']           as int,
+    totalFake:         json['total_fake']           as int,
+    avgConfidenceReal: (json['avg_confidence_real'] as num).toDouble(),
+    avgConfidenceFake: (json['avg_confidence_fake'] as num).toDouble(),
+    dailyActivity:     (json['daily_activity'] as List)
+        .map((e) => DailyActivity.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    verdictTrend: (json['verdict_trend'] as List)
+        .map((e) => e as String)
+        .toList(),
+    insight:      json['insight']      as String,
+    lastScanned:  json['last_scanned'] as String?,
+  );
+
+  // Convenience getters
+  double get fakePercentage =>
+      totalScans > 0 ? (totalFake / totalScans) * 100 : 0;
+  double get realPercentage =>
+      totalScans > 0 ? (totalReal / totalScans) * 100 : 0;
+}
+
+
+// ── ADD this method inside DetectionService class ─────────────────
+
+Future<AnalyticsData?> getAnalytics() async {
+  try {
+    final savedUser = await StorageService.getSavedUser();
+    if (savedUser == null) return null;
+
+    final response = await http.get(
+      Uri.parse(AppConstants.analyticsEndpoint),
+      headers: {
+        'Authorization': 'Bearer ${savedUser.token}',
+        'Accept':        'application/json',
+      },
+    ).timeout(AppConstants.requestTimeout);
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return AnalyticsData.fromJson(body);
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
