@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from routes.badges_routes import router as badges_router
 
 # Load .env before anything else
 load_dotenv()
@@ -36,6 +37,7 @@ app.include_router(auth_routes.router, prefix="/api/auth",     tags=["Auth"])
 app.include_router(user_routes.router, prefix="/api/users",    tags=["Users"])
 app.include_router(password_routes.router, prefix="/api/password", tags=["Password"])
 app.include_router(detect_routes.router, prefix="/api/detect", tags=["Detection"])
+app.include_router(badges_router, prefix="/api/badges", tags=["badges"])
 
 
 # ── Health Check ─────────────────────────────────────────────────

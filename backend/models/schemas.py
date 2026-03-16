@@ -176,3 +176,25 @@ class AnalyticsResponse(BaseModel):
     # Personalized insight string generated on backend
     insight:             str
     last_scanned:        Optional[str] = None
+
+# ── Badges ────────────────────────────────────────────────────────
+# ADD these classes at the bottom of schemas.py
+
+class BadgeItem(BaseModel):
+    """A single badge — earned or locked."""
+    id:          str            # Unique badge ID e.g. 'rookie'
+    name:        str            # Display name e.g. 'Rookie'
+    description: str            # How to earn it
+    emoji:       str            # Visual icon
+    earned:      bool           # Whether the user has unlocked it
+    progress:    int            # Current progress value
+    target:      int            # Value needed to unlock
+    category:    str            # 'scans' | 'fakes' | 'streak'
+
+class BadgesResponse(BaseModel):
+    """Full badges response."""
+    badges:         List[BadgeItem]
+    earned_count:   int
+    total_count:    int
+    current_streak: int
+    longest_streak: int         # For future use

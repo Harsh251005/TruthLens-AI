@@ -30,6 +30,7 @@ class AppConstants {
   static const String historyEndpoint = '$baseUrl/api/detect/history';
   static const String statsEndpoint   = '$baseUrl/api/detect/stats';
   static const String analyticsEndpoint = '$baseUrl/api/detect/analytics';
+  static const String badgesEndpoint = '$baseUrl/api/badges/';
 
   /// Builds delete URL for a single scan by ID
   static String deleteScanEndpoint(int scanId) =>

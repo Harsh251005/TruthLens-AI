@@ -31,10 +31,11 @@ async def detect(
     user_id: int = Depends(get_current_user),
 ):
     """
-    Accepts an image, runs full deepfake analysis pipeline:
-    model inference + GradCAM + EXIF + LLM explanation.
-    Saves result to DB and returns rich response.
+    Accepts an image, runs full deepfake analysis pipeline.
+    Also updates the user's scan streak after every successful scan.
     """
+    from datetime import datetime, timedelta, date as date_type
+
     # Validate file type
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400,
@@ -48,27 +49,66 @@ async def detect(
             detail="Image too large. Please upload an image under 10MB.")
 
     try:
-        # Run full detection pipeline
+        # ── Run detection pipeline ────────────────────────────
         result = predict(image_bytes)
 
-        # Save core result to DB (we don't store heatmap/exif in DB)
         conn   = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """INSERT INTO scans
-               (user_id, image_name, verdict, confidence, raw_score)
-               VALUES (%s, %s, %s, %s, %s)""",
-            (
-                user_id,
-                file.filename or "uploaded_image",
-                result["verdict"],
-                result["confidence"],
-                result["raw_score"],
+        cursor = conn.cursor(dictionary=True)
+
+        try:
+            # ── Save scan to DB ───────────────────────────────
+            cursor.execute(
+                """INSERT INTO scans
+                   (user_id, image_name, verdict, confidence, raw_score)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (
+                    user_id,
+                    file.filename or "uploaded_image",
+                    result["verdict"],
+                    result["confidence"],
+                    result["raw_score"],
+                )
             )
-        )
-        conn.commit()
-        cursor.close()
-        conn.close()
+
+            # ── Update streak ─────────────────────────────────
+            # Fetch current streak data for this user
+            cursor.execute(
+                "SELECT current_streak, last_scan_date FROM users WHERE id = %s",
+                (user_id,)
+            )
+            user_row   = cursor.fetchone()
+            today      = datetime.utcnow().date()
+            last_date  = user_row["last_scan_date"]   # date or None
+            streak     = user_row["current_streak"]   # int
+
+            if last_date is None:
+                # First scan ever — start streak at 1
+                new_streak = 1
+            elif last_date == today:
+                # Already scanned today — streak unchanged
+                new_streak = streak
+            elif last_date == today - __import__('datetime').timedelta(days=1):
+                # Scanned yesterday — extend streak
+                new_streak = streak + 1
+            else:
+                # Gap of more than 1 day — reset streak
+                new_streak = 1
+
+            # Persist updated streak
+            cursor.execute(
+                "UPDATE users SET current_streak = %s, last_scan_date = %s "
+                "WHERE id = %s",
+                (new_streak, today, user_id)
+            )
+
+            conn.commit()
+
+        except Exception as db_err:
+            conn.rollback()
+            raise db_err
+        finally:
+            cursor.close()
+            conn.close()
 
         return DetectionResult(**result)
 
@@ -81,7 +121,6 @@ async def detect(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Detection error: {str(e)}")
-
 
 # ── Scan History ──────────────────────────────────────────────────
 @router.get("/history", response_model=ScanHistoryResponse)

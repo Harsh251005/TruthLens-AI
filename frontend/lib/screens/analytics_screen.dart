@@ -444,14 +444,19 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
     return Row(children: [
       Container(width: 12, height: 12,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-      const SizedBox(width: 10),
-      Expanded(child: Text(label, style: const TextStyle(
-          color: AppTheme.textPrimary, fontSize: 14,
-          fontWeight: FontWeight.w600))),
-      Text('$count  ', style: TextStyle(color: color,
-          fontSize: 16, fontWeight: FontWeight.w800)),
+      const SizedBox(width: 8),
+      // Expanded absorbs all remaining space — no Spacer needed
+      Expanded(
+        child: Text(label, style: const TextStyle(
+            color: AppTheme.textPrimary, fontSize: 14,
+            fontWeight: FontWeight.w600)),
+      ),
+      Text('$count', style: TextStyle(
+          color: color, fontSize: 16, fontWeight: FontWeight.w800)),
+      const SizedBox(width: 4),
       Text('(${percent.toStringAsFixed(0)}%)',
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          style: const TextStyle(
+              color: AppTheme.textSecondary, fontSize: 12)),
     ]);
   }
 
@@ -541,35 +546,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // Dot row
-        Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: trend.asMap().entries.map((e) {
-            final isFake  = e.value == 'FAKE';
-            final color   = isFake ? AppTheme.error : AppTheme.success;
-            final isLast  = e.key == trend.length - 1;
-            return Row(children: [
-              // Connecting line between dots
-              if (e.key > 0)
-                Container(width: 16, height: 2,
-                    color: AppTheme.surfaceBorder),
-              // The dot
-              Container(
-                width:  isLast ? 18 : 14,
-                height: isLast ? 18 : 14,
-                decoration: BoxDecoration(
-                  color:  color,
-                  shape:  BoxShape.circle,
-                  boxShadow: isLast ? [
-                    BoxShadow(color: color.withOpacity(0.5),
-                        blurRadius: 8, spreadRadius: 2),
-                  ] : [],
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: trend.asMap().entries.map((e) {
+              final isFake  = e.value == 'FAKE';
+              final color   = isFake ? AppTheme.error : AppTheme.success;
+              final isLast  = e.key == trend.length - 1;
+              return Row(children: [
+                if (e.key > 0)
+                  Container(width: 16, height: 2,
+                      color: AppTheme.surfaceBorder),
+                Container(
+                  width:  isLast ? 18 : 14,
+                  height: isLast ? 18 : 14,
+                  decoration: BoxDecoration(
+                    color:  color,
+                    shape:  BoxShape.circle,
+                    boxShadow: isLast ? [
+                      BoxShadow(color: color.withOpacity(0.5),
+                          blurRadius: 8, spreadRadius: 2),
+                    ] : [],
+                  ),
+                  child: isLast
+                      ? const Icon(Icons.circle, color: Colors.white, size: 8)
+                      : null,
                 ),
-                child: isLast
-                    ? const Icon(Icons.circle, color: Colors.white, size: 8)
-                    : null,
-              ),
-            ]);
-          }).toList(),
+              ]);
+            }).toList(),
+          ),
         ),
         const SizedBox(height: 14),
         // Legend
@@ -588,7 +594,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           const Text('Deepfake', style: TextStyle(
               color: AppTheme.textSecondary, fontSize: 12)),
           const Spacer(),
-          const Text('← Oldest   Newest →',
+          const Text('old → new', // Shortened to prevent overflow
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
         ]),
       ]),

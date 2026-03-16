@@ -5,6 +5,8 @@
 //   - Fetching scan history
 //   - Deleting scans
 //   - Fetching stats
+//   - Fetching analytics
+//   - Fetching badges
 // ============================================================
 
 import 'dart:io';
@@ -50,8 +52,8 @@ class DetectionResult {
   final double rawScore;
   final String message;
   final List<String> tips;
-  final String explanation;    // LLM-generated human explanation
-  final ExifAnalysis exifAnalysis;  // EXIF metadata analysis
+  final String explanation;
+  final ExifAnalysis exifAnalysis;
 
   const DetectionResult({
     required this.verdict,
@@ -126,9 +128,9 @@ class DetectionResponse {
 
 // ── Scan Stats Model ──────────────────────────────────────────────
 class ScanStats {
-  final int    totalScans;
-  final int    totalReal;
-  final int    totalFake;
+  final int     totalScans;
+  final int     totalReal;
+  final int     totalFake;
   final String? lastScanned;
 
   const ScanStats({
@@ -140,16 +142,158 @@ class ScanStats {
 
   factory ScanStats.fromJson(Map<String, dynamic> json) {
     return ScanStats(
-      totalScans:  json['total_scans'] as int,
-      totalReal:   json['total_real']  as int,
-      totalFake:   json['total_fake']  as int,
+      totalScans:  json['total_scans']  as int,
+      totalReal:   json['total_real']   as int,
+      totalFake:   json['total_fake']   as int,
       lastScanned: json['last_scanned'] as String?,
     );
   }
 
-  /// Percentage of fake scans
   double get fakePercent =>
       totalScans == 0 ? 0 : (totalFake / totalScans) * 100;
+}
+
+
+// ── Daily Activity Model ──────────────────────────────────────────
+class DailyActivity {
+  final String date;
+  final int    total;
+  final int    realCount;
+  final int    fakeCount;
+
+  const DailyActivity({
+    required this.date,
+    required this.total,
+    required this.realCount,
+    required this.fakeCount,
+  });
+
+  factory DailyActivity.fromJson(Map<String, dynamic> json) => DailyActivity(
+    date:      json['date']       as String,
+    total:     json['total']      as int,
+    realCount: json['real_count'] as int,
+    fakeCount: json['fake_count'] as int,
+  );
+}
+
+
+// ── Analytics Data Model ──────────────────────────────────────────
+class AnalyticsData {
+  final int               totalScans;
+  final int               totalReal;
+  final int               totalFake;
+  final double            avgConfidenceReal;
+  final double            avgConfidenceFake;
+  final List<DailyActivity> dailyActivity;
+  final List<String>      verdictTrend;
+  final String            insight;
+  final String?           lastScanned;
+
+  const AnalyticsData({
+    required this.totalScans,
+    required this.totalReal,
+    required this.totalFake,
+    required this.avgConfidenceReal,
+    required this.avgConfidenceFake,
+    required this.dailyActivity,
+    required this.verdictTrend,
+    required this.insight,
+    this.lastScanned,
+  });
+
+  factory AnalyticsData.fromJson(Map<String, dynamic> json) => AnalyticsData(
+    totalScans:        json['total_scans']          as int,
+    totalReal:         json['total_real']           as int,
+    totalFake:         json['total_fake']           as int,
+    avgConfidenceReal: (json['avg_confidence_real'] as num).toDouble(),
+    avgConfidenceFake: (json['avg_confidence_fake'] as num).toDouble(),
+    dailyActivity: (json['daily_activity'] as List)
+        .map((e) => DailyActivity.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    verdictTrend: (json['verdict_trend'] as List)
+        .map((e) => e as String)
+        .toList(),
+    insight:     json['insight']      as String,
+    lastScanned: json['last_scanned'] as String?,
+  );
+
+  double get fakePercentage =>
+      totalScans > 0 ? (totalFake / totalScans) * 100 : 0;
+  double get realPercentage =>
+      totalScans > 0 ? (totalReal / totalScans) * 100 : 0;
+}
+
+
+// ── Badge Item Model ──────────────────────────────────────────────
+class BadgeItem {
+  final String id;
+  final String name;
+  final String description;
+  final String emoji;
+  final bool   earned;
+  final int    progress;
+  final int    target;
+  final String category;
+
+  const BadgeItem({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.emoji,
+    required this.earned,
+    required this.progress,
+    required this.target,
+    required this.category,
+  });
+
+  factory BadgeItem.fromJson(Map<String, dynamic> json) => BadgeItem(
+    id:          json['id']          as String,
+    name:        json['name']        as String,
+    description: json['description'] as String,
+    emoji:       json['emoji']       as String,
+    earned:      json['earned']      as bool,
+    progress:    json['progress']    as int,
+    target:      json['target']      as int,
+    category:    json['category']    as String,
+  );
+
+  double get progressFraction =>
+      target > 0 ? (progress / target).clamp(0.0, 1.0) : 0.0;
+}
+
+
+// ── Badges Data Model ─────────────────────────────────────────────
+class BadgesData {
+  final List<BadgeItem> badges;
+  final int             earnedCount;
+  final int             totalCount;
+  final int             currentStreak;
+  final int             longestStreak;
+
+  const BadgesData({
+    required this.badges,
+    required this.earnedCount,
+    required this.totalCount,
+    required this.currentStreak,
+    required this.longestStreak,
+  });
+
+  factory BadgesData.fromJson(Map<String, dynamic> json) => BadgesData(
+    badges: (json['badges'] as List)
+        .map((e) => BadgeItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    earnedCount:   json['earned_count']   as int,
+    totalCount:    json['total_count']    as int,
+    currentStreak: json['current_streak'] as int,
+    longestStreak: json['longest_streak'] as int,
+  );
+
+  List<BadgeItem> get scanBadges =>
+      badges.where((b) => b.category == 'scans').toList();
+  List<BadgeItem> get fakeBadges =>
+      badges.where((b) => b.category == 'fakes' || b.category == 'real').toList();
+  List<BadgeItem> get streakBadges =>
+      badges.where((b) => b.category == 'streak').toList();
 }
 
 
@@ -157,7 +301,6 @@ class ScanStats {
 class DetectionService {
 
   // ── Detect Image ──────────────────────────────────────────────
-  /// Uploads image to backend and returns full rich detection result.
   Future<DetectionResponse> detectImage(File imageFile) async {
     try {
       final savedUser = await StorageService.getSavedUser();
@@ -168,20 +311,14 @@ class DetectionService {
         );
       }
 
-      // Determine MIME type from file extension
       final ext      = imageFile.path.split('.').last.toLowerCase();
       final mimeType = _getMimeType(ext);
 
-      // Create multipart request
       final request = http.MultipartRequest(
         'POST',
         Uri.parse(AppConstants.detectEndpoint),
       );
-
-      // Add authorization header
       request.headers['Authorization'] = 'Bearer ${savedUser.token}';
-
-      // Attach image with explicit MIME type
       request.files.add(
         await http.MultipartFile.fromPath(
           'file',
@@ -190,11 +327,9 @@ class DetectionService {
         ),
       );
 
-      // Send with timeout
       final streamedResponse = await request
           .send()
           .timeout(AppConstants.requestTimeout);
-
       final response = await http.Response.fromStream(streamedResponse);
       final body     = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -216,10 +351,7 @@ class DetectionService {
         );
       }
     } catch (e) {
-      return DetectionResponse(
-        success: false,
-        message: _friendlyError(e),
-      );
+      return DetectionResponse(success: false, message: _friendlyError(e));
     }
   }
 
@@ -314,6 +446,54 @@ class DetectionService {
     }
   }
 
+  // ── Analytics ─────────────────────────────────────────────────
+  Future<AnalyticsData?> getAnalytics() async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) return null;
+
+      final response = await http.get(
+        Uri.parse(AppConstants.analyticsEndpoint),
+        headers: {
+          'Authorization': 'Bearer ${savedUser.token}',
+          'Accept':        'application/json',
+        },
+      ).timeout(AppConstants.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return AnalyticsData.fromJson(body);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Badges ────────────────────────────────────────────────────
+  Future<BadgesData?> getBadges() async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) return null;
+
+      final response = await http.get(
+        Uri.parse(AppConstants.badgesEndpoint),
+        headers: {
+          'Authorization': 'Bearer ${savedUser.token}',
+          'Accept':        'application/json',
+        },
+      ).timeout(AppConstants.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return BadgesData.fromJson(body);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────
   String _getMimeType(String ext) {
     switch (ext) {
@@ -334,113 +514,5 @@ class DetectionService {
       return 'Detection timed out. Please try again.';
     }
     return 'An unexpected error occurred. Please try again.';
-  }
-}
-
-// ================================================================
-// ADD to detection_service.dart
-//
-// 1. Add this model class anywhere near the other model classes
-//    (e.g. after ScanStats)
-//
-// 2. Add the getAnalytics() method inside the DetectionService class
-//
-// 3. Add this constant to constants.dart:
-//    static const String analyticsEndpoint = '$baseUrl/api/detect/analytics';
-// ================================================================
-
-
-// ── ADD this model class ─────────────────────────────────────────
-
-class DailyActivity {
-  final String date;        // 'Mon', 'Tue' etc
-  final int    total;
-  final int    realCount;
-  final int    fakeCount;
-
-  const DailyActivity({
-    required this.date,
-    required this.total,
-    required this.realCount,
-    required this.fakeCount,
-  });
-
-  factory DailyActivity.fromJson(Map<String, dynamic> json) => DailyActivity(
-    date:       json['date']       as String,
-    total:      json['total']      as int,
-    realCount:  json['real_count'] as int,
-    fakeCount:  json['fake_count'] as int,
-  );
-}
-
-class AnalyticsData {
-  final int              totalScans;
-  final int              totalReal;
-  final int              totalFake;
-  final double           avgConfidenceReal;
-  final double           avgConfidenceFake;
-  final List<DailyActivity> dailyActivity;
-  final List<String>     verdictTrend;
-  final String           insight;
-  final String?          lastScanned;
-
-  const AnalyticsData({
-    required this.totalScans,
-    required this.totalReal,
-    required this.totalFake,
-    required this.avgConfidenceReal,
-    required this.avgConfidenceFake,
-    required this.dailyActivity,
-    required this.verdictTrend,
-    required this.insight,
-    this.lastScanned,
-  });
-
-  factory AnalyticsData.fromJson(Map<String, dynamic> json) => AnalyticsData(
-    totalScans:        json['total_scans']          as int,
-    totalReal:         json['total_real']           as int,
-    totalFake:         json['total_fake']           as int,
-    avgConfidenceReal: (json['avg_confidence_real'] as num).toDouble(),
-    avgConfidenceFake: (json['avg_confidence_fake'] as num).toDouble(),
-    dailyActivity:     (json['daily_activity'] as List)
-        .map((e) => DailyActivity.fromJson(e as Map<String, dynamic>))
-        .toList(),
-    verdictTrend: (json['verdict_trend'] as List)
-        .map((e) => e as String)
-        .toList(),
-    insight:      json['insight']      as String,
-    lastScanned:  json['last_scanned'] as String?,
-  );
-
-  // Convenience getters
-  double get fakePercentage =>
-      totalScans > 0 ? (totalFake / totalScans) * 100 : 0;
-  double get realPercentage =>
-      totalScans > 0 ? (totalReal / totalScans) * 100 : 0;
-}
-
-
-// ── ADD this method inside DetectionService class ─────────────────
-
-Future<AnalyticsData?> getAnalytics() async {
-  try {
-    final savedUser = await StorageService.getSavedUser();
-    if (savedUser == null) return null;
-
-    final response = await http.get(
-      Uri.parse(AppConstants.analyticsEndpoint),
-      headers: {
-        'Authorization': 'Bearer ${savedUser.token}',
-        'Accept':        'application/json',
-      },
-    ).timeout(AppConstants.requestTimeout);
-
-    if (response.statusCode == 200) {
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return AnalyticsData.fromJson(body);
-    }
-    return null;
-  } catch (_) {
-    return null;
   }
 }
