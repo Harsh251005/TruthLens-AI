@@ -515,4 +515,164 @@ class DetectionService {
     }
     return 'An unexpected error occurred. Please try again.';
   }
+
+  // ── Save Challenge Score ──────────────────────────────────────
+  Future<bool> saveScore({
+    required int    score,
+    required int    total,
+    required double accuracy,
+    required int    maxCombo,
+    required String grade,
+  }) async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) return false;
+
+      final response = await http.post(
+        Uri.parse(AppConstants.saveScoreEndpoint),
+        headers: {
+          'Authorization': 'Bearer ${savedUser.token}',
+          'Content-Type':  'application/json',
+          'Accept':        'application/json',
+        },
+        body: jsonEncode({
+          'score':     score,
+          'total':     total,
+          'accuracy':  accuracy,
+          'max_combo': maxCombo,
+          'grade':     grade,
+        }),
+      ).timeout(AppConstants.requestTimeout);
+
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+// ── Get Leaderboard ───────────────────────────────────────────
+  Future<LeaderboardData?> getLeaderboard({
+    String period = 'alltime',
+  }) async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) return null;
+
+      final response = await http.get(
+        Uri.parse(
+            '${AppConstants.leaderboardEndpoint}?period=$period'),
+        headers: {
+          'Authorization': 'Bearer ${savedUser.token}',
+          'Accept':        'application/json',
+        },
+      ).timeout(AppConstants.requestTimeout);
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        return LeaderboardData.fromJson(body);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+// ── Leaderboard Models ────────────────────────────────────────────
+class LeaderboardEntry {
+  final int     rank;
+  final int     userId;
+  final String  name;
+  final String  avatarType;
+  final String? avatarData;
+  final int     score;
+  final int     total;
+  final double  accuracy;
+  final int     maxCombo;
+  final String  grade;
+  final String  playedAt;
+
+  const LeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.name,
+    required this.avatarType,
+    this.avatarData,
+    required this.score,
+    required this.total,
+    required this.accuracy,
+    required this.maxCombo,
+    required this.grade,
+    required this.playedAt,
+  });
+
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) =>
+      LeaderboardEntry(
+        rank:        json['rank']        as int,
+        userId:      json['user_id']     as int,
+        name:        json['name']        as String,
+        avatarType:  json['avatar_type'] as String? ?? 'initial',
+        avatarData:  json['avatar_data'] as String?,
+        score:       json['score']       as int,
+        total:       json['total']       as int,
+        accuracy:    (json['accuracy']   as num).toDouble(),
+        maxCombo:    json['max_combo']   as int,
+        grade:       json['grade']       as String,
+        playedAt:    json['played_at']   as String,
+      );
+}
+
+class PersonalBest {
+  final int    score;
+  final int    total;
+  final double accuracy;
+  final int    maxCombo;
+  final String grade;
+  final String playedAt;
+
+  const PersonalBest({
+    required this.score,
+    required this.total,
+    required this.accuracy,
+    required this.maxCombo,
+    required this.grade,
+    required this.playedAt,
+  });
+
+  factory PersonalBest.fromJson(Map<String, dynamic> json) => PersonalBest(
+    score:    json['score']     as int,
+    total:    json['total']     as int,
+    accuracy: (json['accuracy'] as num).toDouble(),
+    maxCombo: json['max_combo'] as int,
+    grade:    json['grade']     as String,
+    playedAt: json['played_at'] as String,
+  );
+}
+
+class LeaderboardData {
+  final List<LeaderboardEntry> entries;
+  final int?         userRank;
+  final PersonalBest? personalBest;
+  final int          totalPlayers;
+
+  const LeaderboardData({
+    required this.entries,
+    this.userRank,
+    this.personalBest,
+    required this.totalPlayers,
+  });
+
+  factory LeaderboardData.fromJson(Map<String, dynamic> json) =>
+      LeaderboardData(
+        entries: (json['entries'] as List)
+            .map((e) => LeaderboardEntry.fromJson(
+            e as Map<String, dynamic>))
+            .toList(),
+        userRank: json['user_rank'] as int?,
+        personalBest: json['personal_best'] != null
+            ? PersonalBest.fromJson(
+            json['personal_best'] as Map<String, dynamic>)
+            : null,
+        totalPlayers: json['total_players'] as int,
+      );
 }

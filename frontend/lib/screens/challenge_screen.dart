@@ -14,6 +14,8 @@ import 'package:share_plus/share_plus.dart';
 import '../services/storage_service.dart';
 import '../utils/app_theme.dart';
 import '../utils/constants.dart';
+import '../services/detection_service.dart';
+import 'leaderboard_screen.dart';
 
 // ── Data model ────────────────────────────────────────────────────
 class ChallengeImage {
@@ -244,10 +246,25 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     if (_currentIndex >= _images.length - 1) {
       setState(() => _isGameOver = true);
       HapticFeedback.heavyImpact();
+      // Auto-save score silently in background
+      _saveScoreToBackend();
     } else {
       setState(() => _currentIndex++);
       _startRound();
     }
+  }
+
+  // ── Save score to backend silently ───────────────────────────
+  Future<void> _saveScoreToBackend() async {
+    final grade    = _getGrade();
+    final accuracy = (_score / _images.length * 100);
+    await DetectionService().saveScore(
+      score:    _score,
+      total:    _images.length,
+      accuracy: accuracy,
+      maxCombo: _maxCombo,
+      grade:    grade['grade'] as String,
+    );
   }
 
 
@@ -847,6 +864,26 @@ class _ChallengeScreenState extends State<ChallengeScreen>
             ),
           ),
         ]),
+
+        const SizedBox(height: 12),
+
+        const SizedBox(height: 12),
+
+// Leaderboard button
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const LeaderboardScreen()),
+            ),
+            icon:  const Icon(Icons.leaderboard_rounded,
+                color: AppTheme.accent, size: 18),
+            label: const Text('View Leaderboard',
+                style: TextStyle(color: AppTheme.accent,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
 
         const SizedBox(height: 12),
 

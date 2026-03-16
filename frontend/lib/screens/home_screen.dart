@@ -14,6 +14,8 @@ import 'about_screen.dart';
 import '../services/storage_service.dart';
 import 'analytics_screen.dart';
 import 'challenge_screen.dart';
+import 'awareness_screen.dart';
+import 'leaderboard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -452,6 +454,38 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const ChallengeScreen()),
             ),
           )),
+        ]),
+
+        // In the Analytics + Challenge row, make it a 3rd row:
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _buildActionTile(
+            icon:     Icons.leaderboard_rounded,
+            label:    'Leaderboard',
+            subtitle: 'Top players',
+            color:    const Color(0xFFFFD700),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const LeaderboardScreen()),
+            ),
+          )),
+          const SizedBox(width: 12),
+          const Expanded(child: SizedBox()),
+        ]),
+
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _buildActionTile(
+            icon:     Icons.school_rounded,
+            label:    'Awareness Hub',
+            subtitle: 'Learn about deepfakes',
+            color:    const Color(0xFF26A69A),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AwarenessScreen()),
+            ),
+          )),
+          const SizedBox(width: 12),
+          const Expanded(child: SizedBox()),
         ]),
       ],
     );

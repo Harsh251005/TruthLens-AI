@@ -1,51 +1,48 @@
 # routes/challenge_routes.py
 # ============================================================
 # Challenge Mode endpoints:
-#   GET /api/challenge/round  → returns 10 random images
-#                               (mix of real + fake) for one
-#                               game session
+#   GET  /api/challenge/round        → 10 random images
+#   POST /api/challenge/score        → save score after round
+#   GET  /api/challenge/leaderboard  → top 20 + user rank + personal best
 # ============================================================
 
 import os
 import random
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
 from typing import List
+from pydantic import BaseModel
 from middleware.auth_middleware import get_current_user
+from models.schemas import (
+    SaveScoreRequest, LeaderboardResponse,
+    LeaderboardEntry, PersonalBest,
+)
+from config.database import get_db_connection
 
 router = APIRouter()
 
-# ── Paths to challenge image folders ─────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REAL_DIR   = os.path.join(BASE_DIR, "static", "challenge", "real")
 FAKE_DIR   = os.path.join(BASE_DIR, "static", "challenge", "fake")
-
-# Supported image extensions
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
-
-# Number of images per game round
 ROUND_SIZE = 10
 
 
-# ── Response schema ───────────────────────────────────────────────
+# ── Local schemas ─────────────────────────────────────────────────
 class ChallengeImage(BaseModel):
-    """Single challenge image — answer hidden until user guesses."""
-    index:    int     # Position in the round (0-9)
-    url:      str     # Full URL to fetch the image
-    answer:   str     # 'REAL' or 'FAKE' — revealed after guess
-
+    index:  int
+    url:    str
+    answer: str
 
 class ChallengeRoundResponse(BaseModel):
-    """10 shuffled images for one game round."""
-    images:      List[ChallengeImage]
-    total:       int   # Always 10
-    real_count:  int   # How many are real in this round
-    fake_count:  int   # How many are fake in this round
+    images:     List[ChallengeImage]
+    total:      int
+    real_count: int
+    fake_count: int
 
 
-# ── Helper: scan folder for images ───────────────────────────────
+# ── Helper ────────────────────────────────────────────────────────
 def _get_images(folder: str) -> List[str]:
-    """Returns list of filenames in a folder that are images."""
     if not os.path.exists(folder):
         return []
     return [
@@ -60,40 +57,26 @@ def get_challenge_round(
     request: Request,
     user_id: int = Depends(get_current_user),
 ):
-    """
-    Returns 10 randomly selected images for a challenge round.
-    Split is roughly 50/50 real/fake but randomised each time.
-    The answer field is included so Flutter can check guesses
-    locally — no second API call needed per guess.
-    """
-    from fastapi import Request
-
+    """Returns 10 randomly selected images for a challenge round."""
     real_files = _get_images(REAL_DIR)
     fake_files = _get_images(FAKE_DIR)
 
     if len(real_files) < 5 or len(fake_files) < 5:
         raise HTTPException(
             status_code=503,
-            detail="Not enough challenge images available. "
-                   "Please add images to static/challenge/real and fake folders."
+            detail="Not enough challenge images available."
         )
 
-    # Pick random split: either 5/5 or 4/6 or 6/4
     real_count = random.randint(4, 6)
     fake_count = ROUND_SIZE - real_count
-
-    # Cap to available images
     real_count = min(real_count, len(real_files))
     fake_count = min(fake_count, len(fake_files))
 
     selected_real = random.sample(real_files, real_count)
     selected_fake = random.sample(fake_files, fake_count)
 
-    # Build base URL from the incoming request so it works on
-    # any host (local dev or Render)
     base_url = str(request.base_url).rstrip("/")
 
-    # Combine and shuffle
     images = []
     for filename in selected_real:
         images.append({
@@ -113,7 +96,180 @@ def get_challenge_round(
             ChallengeImage(index=i, url=img["url"], answer=img["answer"])
             for i, img in enumerate(images)
         ],
-        total=len(images),
-        real_count=real_count,
-        fake_count=fake_count,
+        total      = len(images),
+        real_count = real_count,
+        fake_count = fake_count,
     )
+
+
+# ── POST /api/challenge/score ─────────────────────────────────────
+@router.post("/score")
+def save_score(
+    data:    SaveScoreRequest,
+    user_id: int = Depends(get_current_user),
+):
+    """
+    Saves the user's score after completing a challenge round.
+    Called automatically by the app on game over.
+    Always saves — every round is recorded for history.
+    """
+    conn   = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """INSERT INTO challenge_scores
+               (user_id, score, total, accuracy, max_combo, grade)
+               VALUES (%s, %s, %s, %s, %s, %s)""",
+            (
+                user_id,
+                data.score,
+                data.total,
+                data.accuracy,
+                data.max_combo,
+                data.grade,
+            )
+        )
+        conn.commit()
+        return {"message": "Score saved successfully"}
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ── GET /api/challenge/leaderboard ───────────────────────────────
+@router.get("/leaderboard", response_model=LeaderboardResponse)
+def get_leaderboard(
+    user_id: int = Depends(get_current_user),
+    period:  str = "alltime",   # "alltime" or "weekly"
+):
+    """
+    Returns:
+      - Top 20 players by best score
+      - Current user's rank (even if outside top 20)
+      - Current user's personal best
+    Period: 'alltime' or 'weekly' (last 7 days)
+    """
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # ── Date filter for weekly ────────────────────────────
+        date_filter = ""
+        if period == "weekly":
+            date_filter = "AND cs.played_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+
+        # ── Top 20 — best score per user ──────────────────────
+        cursor.execute(f"""
+            SELECT
+                u.id                    AS user_id,
+                u.name                  AS name,
+                u.avatar_type           AS avatar_type,
+                u.avatar_data           AS avatar_data,
+                MAX(cs.score)           AS score,
+                cs.total                AS total,
+                cs.accuracy             AS accuracy,
+                cs.max_combo            AS max_combo,
+                cs.grade                AS grade,
+                cs.played_at            AS played_at
+            FROM challenge_scores cs
+            JOIN users u ON cs.user_id = u.id
+            WHERE 1=1 {date_filter}
+            GROUP BY u.id, u.name, u.avatar_type,
+                     u.avatar_data, cs.total,
+                     cs.accuracy, cs.max_combo,
+                     cs.grade, cs.played_at
+            ORDER BY score DESC, cs.accuracy DESC
+            LIMIT 20
+        """)
+        top_rows = cursor.fetchall()
+
+        entries       = []
+        user_in_top20 = False
+
+        for rank, row in enumerate(top_rows, start=1):
+            if row["user_id"] == user_id:
+                user_in_top20 = True
+            entries.append(LeaderboardEntry(
+                rank        = rank,
+                user_id     = row["user_id"],
+                name        = row["name"],
+                avatar_type = row.get("avatar_type", "initial"),
+                avatar_data = row.get("avatar_data"),
+                score       = row["score"],
+                total       = row["total"],
+                accuracy    = round(float(row["accuracy"]), 1),
+                max_combo   = row["max_combo"],
+                grade       = row["grade"],
+                played_at   = str(row["played_at"]),
+            ))
+
+        # ── User's overall rank ───────────────────────────────
+        user_rank = None
+        if user_in_top20:
+            user_rank = next(
+                (e.rank for e in entries if e.user_id == user_id),
+                None
+            )
+        else:
+            cursor.execute(f"""
+                SELECT COUNT(DISTINCT inner_cs.user_id) + 1 AS user_rank
+                FROM challenge_scores inner_cs
+                WHERE inner_cs.score > (
+                    SELECT COALESCE(MAX(cs3.score), 0)
+                    FROM challenge_scores cs3
+                    WHERE cs3.user_id = %s
+                ) {date_filter.replace('cs.', 'inner_cs.')}
+            """, (user_id,))
+            rank_row = cursor.fetchone()
+            if rank_row:
+                user_rank = rank_row["user_rank"]
+
+        # ── Personal best ─────────────────────────────────────
+        cursor.execute(f"""
+            SELECT score, total, accuracy, max_combo, grade, played_at
+            FROM challenge_scores
+            WHERE user_id = %s
+            {date_filter.replace('cs.', '')}
+            ORDER BY score DESC, accuracy DESC
+            LIMIT 1
+        """, (user_id,))
+        pb_row = cursor.fetchone()
+
+        personal_best = None
+        if pb_row:
+            personal_best = PersonalBest(
+                score     = pb_row["score"],
+                total     = pb_row["total"],
+                accuracy  = round(float(pb_row["accuracy"]), 1),
+                max_combo = pb_row["max_combo"],
+                grade     = pb_row["grade"],
+                played_at = str(pb_row["played_at"]),
+            )
+
+        # ── Total unique players ──────────────────────────────
+        cursor.execute("""
+            SELECT COUNT(DISTINCT user_id) AS total_players
+            FROM challenge_scores
+        """)
+        total_row     = cursor.fetchone()
+        total_players = total_row["total_players"] if total_row else 0
+
+        return LeaderboardResponse(
+            entries       = entries,
+            user_rank     = user_rank,
+            personal_best = personal_best,
+            total_players = total_players,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()

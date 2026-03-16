@@ -24,6 +24,8 @@ class AppConstants {
   static const String updateAvatarEndpoint   = '$baseUrl/api/users/avatar';
 
   static const String challengeEndpoint = '$baseUrl/api/challenge/round';
+  static const String saveScoreEndpoint    = '$baseUrl/api/challenge/score';
+  static const String leaderboardEndpoint  = '$baseUrl/api/challenge/leaderboard';
 
   // ── Password Endpoints ────────────────────────────────────────
   static const String forgotEndpoint         = '$baseUrl/api/password/forgot';
