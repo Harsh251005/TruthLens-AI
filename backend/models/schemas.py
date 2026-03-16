@@ -1,8 +1,12 @@
 # models/schemas.py
 # ============================================================
-# Pydantic schemas define the shape of data for:
-#   - Request bodies  (what Flutter sends to us)
-#   - Response bodies (what we send back to Flutter)
+# Pydantic schemas — defines the shape of all request/response
+# bodies exchanged between Flutter and FastAPI.
+#
+# AVATAR CHANGES (Step 2):
+#   • UserOut      — now includes avatar_type + avatar_data
+#   • UpdateAvatarRequest  — new: payload to set avatar
+#   • UpdateAvatarResponse — new: returned after avatar update
 # ============================================================
 
 from pydantic import BaseModel, EmailStr, Field
@@ -44,6 +48,28 @@ class UpdateProfileResponse(BaseModel):
     user:    "UserOut"
 
 
+# ── Avatar ────────────────────────────────────────────────────────
+# NEW: Used by PUT /api/users/avatar
+
+class UpdateAvatarRequest(BaseModel):
+    """
+    Payload to update a user's avatar.
+
+    avatar_type options:
+      'initial'    → reset to default letter avatar (avatar_data = None)
+      'predefined' → one of the built-in emoji avatars; avatar_data = avatar ID
+                     e.g. "fox", "panda", "robot" (see avatar_constants.dart)
+      'custom'     → photo from device; avatar_data = base64-encoded JPEG string
+    """
+    avatar_type: str = Field(..., pattern="^(initial|predefined|custom)$")
+    avatar_data: Optional[str] = None   # None for 'initial', ID or base64 for others
+
+class UpdateAvatarResponse(BaseModel):
+    message:     str
+    avatar_type: str
+    avatar_data: Optional[str] = None
+
+
 # ── Forgot Password ───────────────────────────────────────────────
 
 class ForgotPasswordRequest(BaseModel):
@@ -65,21 +91,21 @@ class ResetPasswordResponse(BaseModel):
 
 class ExifAnalysis(BaseModel):
     """EXIF metadata analysis results."""
-    raw_fields:      dict        # Human-readable EXIF fields
-    suspicion_flags: List[str]   # List of suspicious findings
-    risk_level:      str         # 'LOW', 'MEDIUM', 'HIGH', or 'UNKNOWN'
-    summary:         str         # One-line summary
-    has_exif:        bool        # Whether EXIF data was found
+    raw_fields:      dict
+    suspicion_flags: List[str]
+    risk_level:      str
+    summary:         str
+    has_exif:        bool
 
 class DetectionResult(BaseModel):
     """Returned after scanning an image — full rich result."""
-    verdict:            str           # 'REAL' or 'FAKE'
-    confidence:         float         # Confidence percentage e.g. 94.5
-    raw_score:          float         # Raw model output 0-1
-    message:            str           # Short verdict message
-    tips:               List[str]     # Quick tips for the user
-    explanation:        str           # LLM-generated human explanation
-    exif_analysis:      ExifAnalysis  # Full EXIF metadata analysis
+    verdict:       str
+    confidence:    float
+    raw_score:     float
+    message:       str
+    tips:          List[str]
+    explanation:   str
+    exif_analysis: ExifAnalysis
 
 class ScanHistoryItem(BaseModel):
     """Single item in scan history."""
@@ -98,18 +124,29 @@ class ScanHistoryResponse(BaseModel):
 # ── Shared ────────────────────────────────────────────────────────
 
 class UserOut(BaseModel):
-    """Safe user object — never includes password."""
-    id:    int
-    name:  str
-    email: str
-    token: Optional[str] = None
+    """
+    Safe user object returned to the client — never includes password.
+
+    Avatar fields:
+      avatar_type — 'initial' | 'predefined' | 'custom'
+      avatar_data — predefined ID string OR base64 JPEG for custom photos.
+                    None when avatar_type == 'initial'.
+    """
+    id:          int
+    name:        str
+    email:       str
+    token:       Optional[str] = None
+
+    # Avatar fields — optional so old login tokens stay compatible
+    avatar_type: Optional[str] = "initial"
+    avatar_data: Optional[str] = None
 
 
-# ── Statistics (NEW) ──────────────────────────────────────────────
+# ── Statistics ────────────────────────────────────────────────────
 
 class StatsResponse(BaseModel):
     """User scan statistics for home screen dashboard."""
     total_scans:  int
     total_real:   int
     total_fake:   int
-    last_scanned: Optional[str] = None  # Date of most recent scan
+    last_scanned: Optional[str] = None
