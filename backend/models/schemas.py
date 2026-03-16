@@ -124,22 +124,13 @@ class ScanHistoryResponse(BaseModel):
 # ── Shared ────────────────────────────────────────────────────────
 
 class UserOut(BaseModel):
-    """
-    Safe user object returned to the client — never includes password.
-
-    Avatar fields:
-      avatar_type — 'initial' | 'predefined' | 'custom'
-      avatar_data — predefined ID string OR base64 JPEG for custom photos.
-                    None when avatar_type == 'initial'.
-    """
     id:          int
     name:        str
     email:       str
     token:       Optional[str] = None
-
-    # Avatar fields — optional so old login tokens stay compatible
     avatar_type: Optional[str] = "initial"
     avatar_data: Optional[str] = None
+    is_verified: Optional[bool] = True   # ← ADD THIS
 
 
 # ── Statistics ────────────────────────────────────────────────────
@@ -234,3 +225,20 @@ class LeaderboardResponse(BaseModel):
     user_rank:     Optional[int] = None
     personal_best: Optional[PersonalBest] = None
     total_players: int
+
+# ── Email Verification ────────────────────────────────────────────
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code:  str = Field(..., min_length=6, max_length=6)
+
+class VerifyEmailResponse(BaseModel):
+    message: str
+    token:   str        # JWT token — user lands on home screen after verify
+    user:    "UserOut"
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+class ResendVerificationResponse(BaseModel):
+    message: str

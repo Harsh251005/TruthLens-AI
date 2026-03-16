@@ -57,3 +57,42 @@ async def send_reset_email(email: str, code: str):
     }
 
     resend.Emails.send(params)
+
+async def send_verification_email(email: str, code: str):
+    """
+    Sends an email verification OTP to a newly registered user.
+    """
+    params = {
+        "from":    MAIL_FROM,
+        "to":      [email],
+        "subject": "Verify your TruthLens AI account",
+        "html":    f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2 style="color: #4F8EF7;">Welcome to TruthLens AI! 👋</h2>
+            <p>Thanks for signing up. Please verify your email address
+               using the code below:</p>
+            <div style="
+                background: #F5F7FB;
+                border-radius: 12px;
+                padding: 20px;
+                text-align: center;
+                margin: 20px 0;
+            ">
+                <h1 style="
+                    color: #4F8EF7;
+                    font-size: 40px;
+                    letter-spacing: 8px;
+                    margin: 0;
+                ">{code}</h1>
+            </div>
+            <p>This code expires in <strong>15 minutes</strong>.</p>
+            <p>If you didn't create a TruthLens AI account,
+               ignore this email.</p>
+            <hr style="border: none; border-top: 1px solid #E5E7EB;">
+            <p style="color: #6B7280; font-size: 12px;">TruthLens AI</p>
+        </body>
+        </html>
+        """,
+    }
+    resend.Emails.send(params)
