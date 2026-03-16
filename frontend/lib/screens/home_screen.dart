@@ -13,6 +13,7 @@ import 'history_screen.dart';
 import 'about_screen.dart';
 import '../services/storage_service.dart';
 import 'analytics_screen.dart';
+import 'challenge_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserModel user;
@@ -403,49 +404,55 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary)),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(child: _buildActionTile(
-              icon: Icons.history_rounded, label: 'Scan History',
-              subtitle: 'Past results', color: AppTheme.accent,
-              onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const HistoryScreen())),
-            )),
-            const SizedBox(width: 12),
-            Expanded(child: _buildActionTile(
-              icon: Icons.person_outline, label: 'My Profile',
-              subtitle: 'Edit account', color: AppTheme.success,
-              onTap: () async {
-                await Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-                if (mounted) _refreshUser();
-              },
-            )),
-          ],
-        ),
+        // Row 1 — Scan History + My Profile
+        Row(children: [
+          Expanded(child: _buildActionTile(
+            icon:     Icons.history_rounded,
+            label:    'Scan History',
+            subtitle: 'Past results',
+            color:    AppTheme.accent,
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HistoryScreen())),
+          )),
+          const SizedBox(width: 12),
+          Expanded(child: _buildActionTile(
+            icon:     Icons.person_outline,
+            label:    'My Profile',
+            subtitle: 'Edit account',
+            color:    AppTheme.success,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+              if (mounted) _refreshUser();
+            },
+          )),
+        ]),
 
-        // ── ADD THIS ──────────────────────────────────────────────
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildActionTile(
-              icon:     Icons.bar_chart_rounded,
-              label:    'Analytics',
-              subtitle: 'Your insights',
-              color:    AppTheme.primary,
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
-              ),
-            )),
-            const SizedBox(width: 12),
-            // Empty expanded keeps the tile half-width like the others
-            // You can fill this later with another quick action
-            const Expanded(child: SizedBox()),
-          ],
-        ),
-        // ── END ADD ───────────────────────────────────────────────
 
+// Row 2 — Analytics + Challenge
+        Row(children: [
+          Expanded(child: _buildActionTile(
+            icon:     Icons.bar_chart_rounded,
+            label:    'Analytics',
+            subtitle: 'Your insights',
+            color:    AppTheme.primary,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AnalyticsScreen()),
+            ),
+          )),
+          const SizedBox(width: 12),
+          Expanded(child: _buildActionTile(
+            icon:     Icons.psychology_rounded,
+            label:    'Challenge',
+            subtitle: 'Spot the fake!',
+            color:    AppTheme.error,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ChallengeScreen()),
+            ),
+          )),
+        ]),
       ],
     );
   }

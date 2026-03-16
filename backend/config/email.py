@@ -16,7 +16,7 @@ resend.api_key = os.getenv("RESEND_API_KEY")
 
 # Sender address — must use Resend's default domain until you
 # verify your own domain in the Resend dashboard
-MAIL_FROM = "TruthLens AI <onboarding@resend.dev>"
+MAIL_FROM = "TruthLens AI <noreply@truthlensai.in>"
 
 
 async def send_reset_email(email: str, code: str):

@@ -18,6 +18,7 @@ dependencies = [
     "python-multipart>=0.0.18",
     "fastapi-mail>=1.4.1", # Email sending for forgot password
     "opencv-python-headless>=4.9.0",
+    "resend==2.10.0",
     # ── ML / Data Science ─────────────────────────────────────
     "gradio>=6.5.1",
     "jupyterlab>=4.5.4",

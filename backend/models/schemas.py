@@ -198,3 +198,39 @@ class BadgesResponse(BaseModel):
     total_count:    int
     current_streak: int
     longest_streak: int         # For future use
+
+# ── Challenge / Leaderboard ───────────────────────────────────────
+
+class SaveScoreRequest(BaseModel):
+    score:     int
+    total:     int
+    accuracy:  float
+    max_combo: int
+    grade:     str = Field(..., min_length=1, max_length=2)
+
+class LeaderboardEntry(BaseModel):
+    rank:       int
+    user_id:    int
+    name:       str
+    avatar_type: str
+    avatar_data: Optional[str] = None
+    score:      int
+    total:      int
+    accuracy:   float
+    max_combo:  int
+    grade:      str
+    played_at:  str
+
+class PersonalBest(BaseModel):
+    score:     int
+    total:     int
+    accuracy:  float
+    max_combo: int
+    grade:     str
+    played_at: str
+
+class LeaderboardResponse(BaseModel):
+    entries:       List[LeaderboardEntry]
+    user_rank:     Optional[int] = None
+    personal_best: Optional[PersonalBest] = None
+    total_players: int

@@ -19,6 +19,8 @@ class AppConstants {
   // NEW: PUT /api/users/avatar — saves chosen avatar to DB
   static const String updateAvatarEndpoint   = '$baseUrl/api/users/avatar';
 
+  static const String challengeEndpoint = '$baseUrl/api/challenge/round';
+
   // ── Password Endpoints ────────────────────────────────────────
   static const String forgotEndpoint         = '$baseUrl/api/password/forgot';
   static const String resetEndpoint          = '$baseUrl/api/password/reset';
