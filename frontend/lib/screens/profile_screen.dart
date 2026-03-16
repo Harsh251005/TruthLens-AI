@@ -31,6 +31,7 @@ import 'login_screen.dart';
 import 'dart:typed_data';
 import 'package:custom_image_crop/custom_image_crop.dart';
 import 'badges_screen.dart';
+import '../services/notification_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -66,6 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool      _isEditingName      = false;
   bool      _isDeletingAccount  = false;
   bool      _isResettingAccount = false;
+  bool      _streakNotifEnabled = true;
+  bool      _badgeNotifEnabled  = true;
   String?   _nameError;
   String?   _passwordError;
   String?   _nameSuccess;
@@ -118,6 +121,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
       _stats            = stats;
       _isLoadingProfile = false;
+    });
+
+    // Load notification preferences
+    final streakEnabled = await NotificationService().isStreakNotifEnabled();
+    final badgeEnabled  = await NotificationService().isBadgeNotifEnabled();
+    setState(() {
+      _streakNotifEnabled = streakEnabled;
+      _badgeNotifEnabled  = badgeEnabled;
     });
   }
 
@@ -1059,6 +1070,87 @@ class _ProfileScreenState extends State<ProfileScreen>
               child: Text('Use a strong password with letters, numbers and symbols.',
                   style: TextStyle(color: AppTheme.primary, fontSize: 13, height: 1.4)),
             ),
+          ]),
+        ),
+        const SizedBox(height: 20),
+        // ── Notifications section ──────────────────────────────
+        _buildSectionLabel('Notifications'),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(AppTheme.paddingL),
+          decoration: AppTheme.cardDecoration(),
+          child: Column(children: [
+
+            // Streak reminder toggle
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color:        AppTheme.accent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                ),
+                child: const Icon(Icons.local_fire_department_rounded,
+                    color: AppTheme.accent, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Daily Streak Reminder',
+                      style: TextStyle(fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary)),
+                  const Text('Reminds you to scan at 8:00 PM',
+                      style: TextStyle(fontSize: 12,
+                          color: AppTheme.textSecondary)),
+                ],
+              )),
+              Switch(
+                value:          _streakNotifEnabled,
+                activeColor:    AppTheme.accent,
+                onChanged: (val) async {
+                  setState(() => _streakNotifEnabled = val);
+                  await NotificationService().setStreakNotifEnabled(val);
+                },
+              ),
+            ]),
+
+            const Divider(color: AppTheme.surfaceBorder, height: 24),
+
+            // Badge progress toggle
+            Row(children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color:        AppTheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                ),
+                child: const Icon(Icons.emoji_events_rounded,
+                    color: AppTheme.primary, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Badge Progress Alerts',
+                      style: TextStyle(fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary)),
+                  const Text('Notifies when close to a new badge',
+                      style: TextStyle(fontSize: 12,
+                          color: AppTheme.textSecondary)),
+                ],
+              )),
+              Switch(
+                value:       _badgeNotifEnabled,
+                activeColor: AppTheme.primary,
+                onChanged: (val) async {
+                  setState(() => _badgeNotifEnabled = val);
+                  await NotificationService().setBadgeNotifEnabled(val);
+                },
+              ),
+            ]),
+
           ]),
         ),
         const SizedBox(height: 20),

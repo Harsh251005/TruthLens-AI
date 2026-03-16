@@ -11,6 +11,7 @@ import '../utils/app_theme.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/scanning_overlay.dart';
 import 'result_screen.dart';
+import '../services/detection_service.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -69,6 +70,9 @@ class _ScanScreenState extends State<ScanScreen> {
           transitionDuration: const Duration(milliseconds: 400),
         ),
       );
+      // Check badge progress after successful scan — fires notification
+      // if user is 1-2 steps away from unlocking a badge
+      DetectionService().checkBadgeProgress();
     } else {
       setState(() => _errorMessage = response.message);
     }

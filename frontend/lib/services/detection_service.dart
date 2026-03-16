@@ -7,6 +7,9 @@
 //   - Fetching stats
 //   - Fetching analytics
 //   - Fetching badges
+//   - Saving challenge scores
+//   - Fetching leaderboard
+//   - Checking badge progress for notifications
 // ============================================================
 
 import 'dart:io';
@@ -15,15 +18,16 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
+import 'notification_service.dart';
 
 
 // ── EXIF Analysis Model ───────────────────────────────────────────
 class ExifAnalysis {
   final Map<String, dynamic> rawFields;
-  final List<String> suspicionFlags;
-  final String riskLevel;
-  final String summary;
-  final bool hasExif;
+  final List<String>         suspicionFlags;
+  final String               riskLevel;
+  final String               summary;
+  final bool                 hasExif;
 
   const ExifAnalysis({
     required this.rawFields,
@@ -33,26 +37,24 @@ class ExifAnalysis {
     required this.hasExif,
   });
 
-  factory ExifAnalysis.fromJson(Map<String, dynamic> json) {
-    return ExifAnalysis(
-      rawFields:      Map<String, dynamic>.from(json['raw_fields'] as Map),
-      suspicionFlags: List<String>.from(json['suspicion_flags'] as List),
-      riskLevel:      json['risk_level'] as String,
-      summary:        json['summary']    as String,
-      hasExif:        json['has_exif']   as bool,
-    );
-  }
+  factory ExifAnalysis.fromJson(Map<String, dynamic> json) => ExifAnalysis(
+    rawFields:      Map<String, dynamic>.from(json['raw_fields'] as Map),
+    suspicionFlags: List<String>.from(json['suspicion_flags'] as List),
+    riskLevel:      json['risk_level'] as String,
+    summary:        json['summary']    as String,
+    hasExif:        json['has_exif']   as bool,
+  );
 }
 
 
 // ── Detection Result Model ────────────────────────────────────────
 class DetectionResult {
-  final String verdict;
-  final double confidence;
-  final double rawScore;
-  final String message;
+  final String       verdict;
+  final double       confidence;
+  final double       rawScore;
+  final String       message;
   final List<String> tips;
-  final String explanation;
+  final String       explanation;
   final ExifAnalysis exifAnalysis;
 
   const DetectionResult({
@@ -65,18 +67,17 @@ class DetectionResult {
     required this.exifAnalysis,
   });
 
-  factory DetectionResult.fromJson(Map<String, dynamic> json) {
-    return DetectionResult(
-      verdict:      json['verdict']     as String,
-      confidence:   (json['confidence'] as num).toDouble(),
-      rawScore:     (json['raw_score']  as num).toDouble(),
-      message:      json['message']     as String,
-      tips:         List<String>.from(json['tips'] as List),
-      explanation:  json['explanation'] as String,
-      exifAnalysis: ExifAnalysis.fromJson(
-          json['exif_analysis'] as Map<String, dynamic>),
-    );
-  }
+  factory DetectionResult.fromJson(Map<String, dynamic> json) =>
+      DetectionResult(
+        verdict:      json['verdict']     as String,
+        confidence:   (json['confidence'] as num).toDouble(),
+        rawScore:     (json['raw_score']  as num).toDouble(),
+        message:      json['message']     as String,
+        tips:         List<String>.from(json['tips'] as List),
+        explanation:  json['explanation'] as String,
+        exifAnalysis: ExifAnalysis.fromJson(
+            json['exif_analysis'] as Map<String, dynamic>),
+      );
 
   bool get isFake => verdict == 'FAKE';
 }
@@ -98,15 +99,14 @@ class ScanHistoryItem {
     required this.scannedAt,
   });
 
-  factory ScanHistoryItem.fromJson(Map<String, dynamic> json) {
-    return ScanHistoryItem(
-      id:         json['id']         as int,
-      imageName:  json['image_name'] as String,
-      verdict:    json['verdict']    as String,
-      confidence: (json['confidence'] as num).toDouble(),
-      scannedAt:  json['scanned_at'] as String,
-    );
-  }
+  factory ScanHistoryItem.fromJson(Map<String, dynamic> json) =>
+      ScanHistoryItem(
+        id:         json['id']          as int,
+        imageName:  json['image_name']  as String,
+        verdict:    json['verdict']     as String,
+        confidence: (json['confidence'] as num).toDouble(),
+        scannedAt:  json['scanned_at']  as String,
+      );
 
   bool get isFake => verdict == 'FAKE';
 }
@@ -114,8 +114,8 @@ class ScanHistoryItem {
 
 // ── Detection Response Wrapper ────────────────────────────────────
 class DetectionResponse {
-  final bool success;
-  final String message;
+  final bool            success;
+  final String          message;
   final DetectionResult? result;
 
   const DetectionResponse({
@@ -140,14 +140,12 @@ class ScanStats {
     this.lastScanned,
   });
 
-  factory ScanStats.fromJson(Map<String, dynamic> json) {
-    return ScanStats(
-      totalScans:  json['total_scans']  as int,
-      totalReal:   json['total_real']   as int,
-      totalFake:   json['total_fake']   as int,
-      lastScanned: json['last_scanned'] as String?,
-    );
-  }
+  factory ScanStats.fromJson(Map<String, dynamic> json) => ScanStats(
+    totalScans:  json['total_scans']  as int,
+    totalReal:   json['total_real']   as int,
+    totalFake:   json['total_fake']   as int,
+    lastScanned: json['last_scanned'] as String?,
+  );
 
   double get fakePercent =>
       totalScans == 0 ? 0 : (totalFake / totalScans) * 100;
@@ -179,15 +177,15 @@ class DailyActivity {
 
 // ── Analytics Data Model ──────────────────────────────────────────
 class AnalyticsData {
-  final int               totalScans;
-  final int               totalReal;
-  final int               totalFake;
-  final double            avgConfidenceReal;
-  final double            avgConfidenceFake;
+  final int                totalScans;
+  final int                totalReal;
+  final int                totalFake;
+  final double             avgConfidenceReal;
+  final double             avgConfidenceFake;
   final List<DailyActivity> dailyActivity;
-  final List<String>      verdictTrend;
-  final String            insight;
-  final String?           lastScanned;
+  final List<String>       verdictTrend;
+  final String             insight;
+  final String?            lastScanned;
 
   const AnalyticsData({
     required this.totalScans,
@@ -297,6 +295,110 @@ class BadgesData {
 }
 
 
+// ── Leaderboard Entry Model ───────────────────────────────────────
+class LeaderboardEntry {
+  final int     rank;
+  final int     userId;
+  final String  name;
+  final String  avatarType;
+  final String? avatarData;
+  final int     score;
+  final int     total;
+  final double  accuracy;
+  final int     maxCombo;
+  final String  grade;
+  final String  playedAt;
+
+  const LeaderboardEntry({
+    required this.rank,
+    required this.userId,
+    required this.name,
+    required this.avatarType,
+    this.avatarData,
+    required this.score,
+    required this.total,
+    required this.accuracy,
+    required this.maxCombo,
+    required this.grade,
+    required this.playedAt,
+  });
+
+  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) =>
+      LeaderboardEntry(
+        rank:       json['rank']        as int,
+        userId:     json['user_id']     as int,
+        name:       json['name']        as String,
+        avatarType: json['avatar_type'] as String? ?? 'initial',
+        avatarData: json['avatar_data'] as String?,
+        score:      json['score']       as int,
+        total:      json['total']       as int,
+        accuracy:   (json['accuracy']   as num).toDouble(),
+        maxCombo:   json['max_combo']   as int,
+        grade:      json['grade']       as String,
+        playedAt:   json['played_at']   as String,
+      );
+}
+
+
+// ── Personal Best Model ───────────────────────────────────────────
+class PersonalBest {
+  final int    score;
+  final int    total;
+  final double accuracy;
+  final int    maxCombo;
+  final String grade;
+  final String playedAt;
+
+  const PersonalBest({
+    required this.score,
+    required this.total,
+    required this.accuracy,
+    required this.maxCombo,
+    required this.grade,
+    required this.playedAt,
+  });
+
+  factory PersonalBest.fromJson(Map<String, dynamic> json) => PersonalBest(
+    score:    json['score']     as int,
+    total:    json['total']     as int,
+    accuracy: (json['accuracy'] as num).toDouble(),
+    maxCombo: json['max_combo'] as int,
+    grade:    json['grade']     as String,
+    playedAt: json['played_at'] as String,
+  );
+}
+
+
+// ── Leaderboard Data Model ────────────────────────────────────────
+class LeaderboardData {
+  final List<LeaderboardEntry> entries;
+  final int?                   userRank;
+  final PersonalBest?          personalBest;
+  final int                    totalPlayers;
+
+  const LeaderboardData({
+    required this.entries,
+    this.userRank,
+    this.personalBest,
+    required this.totalPlayers,
+  });
+
+  factory LeaderboardData.fromJson(Map<String, dynamic> json) =>
+      LeaderboardData(
+        entries: (json['entries'] as List)
+            .map((e) => LeaderboardEntry.fromJson(
+            e as Map<String, dynamic>))
+            .toList(),
+        userRank: json['user_rank'] as int?,
+        personalBest: json['personal_best'] != null
+            ? PersonalBest.fromJson(
+            json['personal_best'] as Map<String, dynamic>)
+            : null,
+        totalPlayers: json['total_players'] as int,
+      );
+}
+
+
 // ── Detection Service ─────────────────────────────────────────────
 class DetectionService {
 
@@ -306,30 +408,22 @@ class DetectionService {
       final savedUser = await StorageService.getSavedUser();
       if (savedUser == null) {
         return const DetectionResponse(
-          success: false,
-          message: 'Not logged in',
-        );
+            success: false, message: 'Not logged in');
       }
 
       final ext      = imageFile.path.split('.').last.toLowerCase();
       final mimeType = _getMimeType(ext);
 
       final request = http.MultipartRequest(
-        'POST',
-        Uri.parse(AppConstants.detectEndpoint),
-      );
+          'POST', Uri.parse(AppConstants.detectEndpoint));
       request.headers['Authorization'] = 'Bearer ${savedUser.token}';
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          imageFile.path,
-          contentType: MediaType('image', mimeType),
-        ),
-      );
+      request.files.add(await http.MultipartFile.fromPath(
+        'file', imageFile.path,
+        contentType: MediaType('image', mimeType),
+      ));
 
-      final streamedResponse = await request
-          .send()
-          .timeout(AppConstants.requestTimeout);
+      final streamedResponse =
+      await request.send().timeout(AppConstants.requestTimeout);
       final response = await http.Response.fromStream(streamedResponse);
       final body     = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -355,6 +449,7 @@ class DetectionService {
     }
   }
 
+
   // ── Scan History ──────────────────────────────────────────────
   Future<List<ScanHistoryItem>> getHistory() async {
     try {
@@ -377,10 +472,11 @@ class DetectionService {
             .toList();
       }
       return [];
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
+
 
   // ── Delete Single Scan ────────────────────────────────────────
   Future<bool> deleteScan(int scanId) async {
@@ -397,10 +493,11 @@ class DetectionService {
       ).timeout(AppConstants.requestTimeout);
 
       return response.statusCode == 200;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
+
 
   // ── Delete All History ────────────────────────────────────────
   Future<bool> deleteHistory() async {
@@ -417,10 +514,11 @@ class DetectionService {
       ).timeout(AppConstants.requestTimeout);
 
       return response.statusCode == 200;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
+
 
   // ── Stats ─────────────────────────────────────────────────────
   Future<ScanStats?> getStats() async {
@@ -441,10 +539,11 @@ class DetectionService {
         return ScanStats.fromJson(body);
       }
       return null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
+
 
   // ── Analytics ─────────────────────────────────────────────────
   Future<AnalyticsData?> getAnalytics() async {
@@ -470,6 +569,7 @@ class DetectionService {
     }
   }
 
+
   // ── Badges ────────────────────────────────────────────────────
   Future<BadgesData?> getBadges() async {
     try {
@@ -494,27 +594,6 @@ class DetectionService {
     }
   }
 
-  // ── Helpers ───────────────────────────────────────────────────
-  String _getMimeType(String ext) {
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg': return 'jpeg';
-      case 'png':  return 'png';
-      case 'webp': return 'webp';
-      default:     return 'jpeg';
-    }
-  }
-
-  String _friendlyError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
-      return 'Cannot reach server. Check your connection.';
-    } else if (msg.contains('TimeoutException')) {
-      return 'Detection timed out. Please try again.';
-    }
-    return 'An unexpected error occurred. Please try again.';
-  }
 
   // ── Save Challenge Score ──────────────────────────────────────
   Future<bool> saveScore({
@@ -550,7 +629,8 @@ class DetectionService {
     }
   }
 
-// ── Get Leaderboard ───────────────────────────────────────────
+
+  // ── Get Leaderboard ───────────────────────────────────────────
   Future<LeaderboardData?> getLeaderboard({
     String period = 'alltime',
   }) async {
@@ -559,8 +639,7 @@ class DetectionService {
       if (savedUser == null) return null;
 
       final response = await http.get(
-        Uri.parse(
-            '${AppConstants.leaderboardEndpoint}?period=$period'),
+        Uri.parse('${AppConstants.leaderboardEndpoint}?period=$period'),
         headers: {
           'Authorization': 'Bearer ${savedUser.token}',
           'Accept':        'application/json',
@@ -576,103 +655,52 @@ class DetectionService {
       return null;
     }
   }
-}
 
-// ── Leaderboard Models ────────────────────────────────────────────
-class LeaderboardEntry {
-  final int     rank;
-  final int     userId;
-  final String  name;
-  final String  avatarType;
-  final String? avatarData;
-  final int     score;
-  final int     total;
-  final double  accuracy;
-  final int     maxCombo;
-  final String  grade;
-  final String  playedAt;
 
-  const LeaderboardEntry({
-    required this.rank,
-    required this.userId,
-    required this.name,
-    required this.avatarType,
-    this.avatarData,
-    required this.score,
-    required this.total,
-    required this.accuracy,
-    required this.maxCombo,
-    required this.grade,
-    required this.playedAt,
-  });
+  // ── Check badge progress + trigger notification ───────────────
+  // Called after every successful scan.
+  // Fires a notification if user is 1–2 steps from a badge.
+  Future<void> checkBadgeProgress() async {
+    try {
+      final data = await getBadges();
+      if (data == null) return;
 
-  factory LeaderboardEntry.fromJson(Map<String, dynamic> json) =>
-      LeaderboardEntry(
-        rank:        json['rank']        as int,
-        userId:      json['user_id']     as int,
-        name:        json['name']        as String,
-        avatarType:  json['avatar_type'] as String? ?? 'initial',
-        avatarData:  json['avatar_data'] as String?,
-        score:       json['score']       as int,
-        total:       json['total']       as int,
-        accuracy:    (json['accuracy']   as num).toDouble(),
-        maxCombo:    json['max_combo']   as int,
-        grade:       json['grade']       as String,
-        playedAt:    json['played_at']   as String,
-      );
-}
+      for (final badge in data.badges) {
+        if (!badge.earned) {
+          final stepsLeft = badge.target - badge.progress;
+          if (stepsLeft <= 2 && stepsLeft > 0) {
+            await NotificationService().showBadgeProgressNotification(
+              badgeName:  badge.name,
+              badgeEmoji: badge.emoji,
+              stepsLeft:  stepsLeft,
+            );
+            break; // Only one notification at a time
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
-class PersonalBest {
-  final int    score;
-  final int    total;
-  final double accuracy;
-  final int    maxCombo;
-  final String grade;
-  final String playedAt;
 
-  const PersonalBest({
-    required this.score,
-    required this.total,
-    required this.accuracy,
-    required this.maxCombo,
-    required this.grade,
-    required this.playedAt,
-  });
+  // ── Helpers ───────────────────────────────────────────────────
+  String _getMimeType(String ext) {
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg': return 'jpeg';
+      case 'png':  return 'png';
+      case 'webp': return 'webp';
+      default:     return 'jpeg';
+    }
+  }
 
-  factory PersonalBest.fromJson(Map<String, dynamic> json) => PersonalBest(
-    score:    json['score']     as int,
-    total:    json['total']     as int,
-    accuracy: (json['accuracy'] as num).toDouble(),
-    maxCombo: json['max_combo'] as int,
-    grade:    json['grade']     as String,
-    playedAt: json['played_at'] as String,
-  );
-}
-
-class LeaderboardData {
-  final List<LeaderboardEntry> entries;
-  final int?         userRank;
-  final PersonalBest? personalBest;
-  final int          totalPlayers;
-
-  const LeaderboardData({
-    required this.entries,
-    this.userRank,
-    this.personalBest,
-    required this.totalPlayers,
-  });
-
-  factory LeaderboardData.fromJson(Map<String, dynamic> json) =>
-      LeaderboardData(
-        entries: (json['entries'] as List)
-            .map((e) => LeaderboardEntry.fromJson(
-            e as Map<String, dynamic>))
-            .toList(),
-        userRank: json['user_rank'] as int?,
-        personalBest: json['personal_best'] != null
-            ? PersonalBest.fromJson(
-            json['personal_best'] as Map<String, dynamic>)
-            : null,
-        totalPlayers: json['total_players'] as int,
-      );
+  String _friendlyError(Object e) {
+    final msg = e.toString();
+    if (msg.contains('SocketException') ||
+        msg.contains('Connection refused')) {
+      return 'Cannot reach server. Check your connection.';
+    } else if (msg.contains('TimeoutException')) {
+      return 'Detection timed out. Please try again.';
+    }
+    return 'An unexpected error occurred. Please try again.';
+  }
 }

@@ -2,19 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
-import 'services/local_detection_service.dart';   // ← ADD
+import 'services/local_detection_service.dart';
+import 'services/notification_service.dart';
 
-void main() async {                                // ← add async
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await LocalDetectionService().initialize();      // ← ADD — loads TFLite model at startup
+  await LocalDetectionService().initialize();
+  try {
+    await NotificationService().init();
+    await NotificationService().scheduleStreakReminder();
+  } catch (e) {
+    debugPrint('Notification init failed: $e');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor:                     Colors.transparent,
-      statusBarIconBrightness:            Brightness.light,
-      systemNavigationBarColor:           Color(0xFF0A0E1A),
-      systemNavigationBarIconBrightness:  Brightness.light,
+      statusBarColor:                    Colors.transparent,
+      statusBarIconBrightness:           Brightness.light,
+      systemNavigationBarColor:          const Color(0xFF0A0E1A),
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
 
