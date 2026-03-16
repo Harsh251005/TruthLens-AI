@@ -109,33 +109,55 @@ def save_score(
     user_id: int = Depends(get_current_user),
 ):
     """
-    Saves the user's score after completing a challenge round.
-    Called automatically by the app on game over.
-    Always saves — every round is recorded for history.
+    Saves score only if it beats the user's existing best.
+    Each user has at most one row in challenge_scores.
     """
     conn   = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
 
     try:
+        # Check existing best score
         cursor.execute(
-            """INSERT INTO challenge_scores
-               (user_id, score, total, accuracy, max_combo, grade)
-               VALUES (%s, %s, %s, %s, %s, %s)""",
-            (
-                user_id,
-                data.score,
-                data.total,
-                data.accuracy,
-                data.max_combo,
-                data.grade,
-            )
+            "SELECT id, score FROM challenge_scores "
+            "WHERE user_id = %s ORDER BY score DESC LIMIT 1",
+            (user_id,)
         )
-        conn.commit()
-        return {"message": "Score saved successfully"}
+        existing = cursor.fetchone()
+
+        if existing is None:
+            # First score ever — insert
+            cursor.execute(
+                """INSERT INTO challenge_scores
+                   (user_id, score, total, accuracy, max_combo, grade)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (user_id, data.score, data.total,
+                 data.accuracy, data.max_combo, data.grade)
+            )
+            conn.commit()
+            return {"message": "Score saved", "is_best": True}
+
+        elif data.score > existing["score"]:
+            # New best — update existing row
+            cursor.execute(
+                """UPDATE challenge_scores
+                   SET score = %s, total = %s, accuracy = %s,
+                       max_combo = %s, grade = %s,
+                       played_at = CURRENT_TIMESTAMP
+                   WHERE id = %s""",
+                (data.score, data.total, data.accuracy,
+                 data.max_combo, data.grade, existing["id"])
+            )
+            conn.commit()
+            return {"message": "New best score saved!", "is_best": True}
+
+        else:
+            # Not a new best — don't save
+            return {"message": "Score not a new best", "is_best": False}
 
     except Exception as e:
         conn.rollback()
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Server error: {str(e)}")
     finally:
         cursor.close()
         conn.close()

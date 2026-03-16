@@ -406,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary)),
         const SizedBox(height: 14),
+
         // Row 1 — Scan History + My Profile
         Row(children: [
           Expanded(child: _buildActionTile(
@@ -433,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
         const SizedBox(height: 12),
 
-// Row 2 — Analytics + Challenge
+        // Row 2 — Analytics + Challenge
         Row(children: [
           Expanded(child: _buildActionTile(
             icon:     Icons.bar_chart_rounded,
@@ -456,8 +457,9 @@ class _HomeScreenState extends State<HomeScreen> {
           )),
         ]),
 
-        // In the Analytics + Challenge row, make it a 3rd row:
         const SizedBox(height: 12),
+
+        // Row 3 — Leaderboard + Awareness Hub
         Row(children: [
           Expanded(child: _buildActionTile(
             icon:     Icons.leaderboard_rounded,
@@ -465,16 +467,10 @@ class _HomeScreenState extends State<HomeScreen> {
             subtitle: 'Top players',
             color:    const Color(0xFFFFD700),
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const LeaderboardScreen()),
+              MaterialPageRoute(builder: (_) => const LeaderboardScreen()),
             ),
           )),
           const SizedBox(width: 12),
-          const Expanded(child: SizedBox()),
-        ]),
-
-        const SizedBox(height: 12),
-        Row(children: [
           Expanded(child: _buildActionTile(
             icon:     Icons.school_rounded,
             label:    'Awareness Hub',
@@ -484,8 +480,6 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const AwarenessScreen()),
             ),
           )),
-          const SizedBox(width: 12),
-          const Expanded(child: SizedBox()),
         ]),
       ],
     );
