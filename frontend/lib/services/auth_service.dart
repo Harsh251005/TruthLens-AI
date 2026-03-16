@@ -103,11 +103,28 @@ class AuthService {
         body: jsonEncode({'name': name, 'email': email, 'password': password}),
       ).timeout(AppConstants.requestTimeout);
 
-      final result = _handleResponse(response);
-      if (result.success && result.user != null) {
-        await StorageService.saveUser(result.user!);
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final userJson = Map<String, dynamic>.from(
+            body['user'] as Map<String, dynamic>);
+
+        // Backend doesn't return is_verified on signup — default to false
+        userJson.putIfAbsent('is_verified', () => false);
+
+        final user = UserModel.fromJson(userJson);
+        await StorageService.saveUser(user);
+        return AuthResult(
+          success: true,
+          message: body['message'] as String? ?? 'Account created',
+          user:    user,
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Signup failed',
+        );
       }
-      return result;
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -396,6 +413,76 @@ class AuthService {
         return AuthResult(
           success: false,
           message: body['detail'] as String? ?? 'Failed to resend OTP',
+        );
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+  // ── Delete Account ────────────────────────────────────────────
+  Future<AuthResult> deleteAccount({required String password}) async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) {
+        return const AuthResult(success: false, message: 'Not logged in');
+      }
+
+      final response = await http.delete(
+        Uri.parse(AppConstants.deleteAccountEndpoint),
+        headers: _authHeaders(savedUser.token),
+        body:    jsonEncode({'password': password}),
+      ).timeout(AppConstants.requestTimeout);
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        await StorageService.clearUser();
+        return AuthResult(
+          success: true,
+          message: body['message'] as String? ?? 'Account deleted',
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Failed to delete account',
+        );
+      }
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+
+// ── Reset Account ─────────────────────────────────────────────
+  Future<AuthResult> resetAccount() async {
+    try {
+      final savedUser = await StorageService.getSavedUser();
+      if (savedUser == null) {
+        return const AuthResult(success: false, message: 'Not logged in');
+      }
+
+      final response = await http.post(
+        Uri.parse(AppConstants.resetAccountEndpoint),
+        headers: _authHeaders(savedUser.token),
+      ).timeout(AppConstants.requestTimeout);
+
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      if (response.statusCode == 200) {
+        // Clear avatar locally since it was reset on backend
+        await StorageService.updateAvatar(
+          avatarType: 'initial',
+          avatarData: null,
+        );
+        return AuthResult(
+          success: true,
+          message: body['message'] as String? ?? 'Account reset',
+        );
+      } else {
+        return AuthResult(
+          success: false,
+          message: body['detail'] as String? ?? 'Failed to reset account',
         );
       }
     } catch (e) {

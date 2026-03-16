@@ -242,3 +242,11 @@ class ResendVerificationRequest(BaseModel):
 
 class ResendVerificationResponse(BaseModel):
     message: str
+
+# ── Account Management ────────────────────────────────────────────
+
+class DeleteAccountRequest(BaseModel):
+    password: str = Field(..., min_length=1)
+
+class ResetAccountResponse(BaseModel):
+    message: str

@@ -229,42 +229,54 @@ class _EmailVerificationScreenState
               const SizedBox(height: 36),
 
               // ── OTP input boxes ───────────────────────────────
+              // REPLACE the Row with this
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(6, (i) {
-                  return Container(
-                    width:  48, height: 56,
-                    margin: const EdgeInsets.symmetric(horizontal: 5),
-                    decoration: BoxDecoration(
-                      color:  AppTheme.surface,
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                      border: Border.all(
-                        color: _focusNodes[i].hasFocus
-                            ? AppTheme.primary
-                            : _errorMessage != null
-                            ? AppTheme.error
-                            : AppTheme.surfaceBorder,
-                        width: _focusNodes[i].hasFocus ? 2 : 1,
+                  return Expanded(
+                    child: Container(
+                      height: 56,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        color:        AppTheme.surface,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                        border: Border.all(
+                          color: _focusNodes[i].hasFocus
+                              ? AppTheme.primary
+                              : _errorMessage != null
+                              ? AppTheme.error
+                              : AppTheme.surfaceBorder,
+                          width: _focusNodes[i].hasFocus ? 2 : 1,
+                        ),
                       ),
-                    ),
-                    child: TextField(
-                      controller:  _controllers[i],
-                      focusNode:   _focusNodes[i],
-                      textAlign:   TextAlign.center,
-                      keyboardType: TextInputType.number,
-                      maxLength:   1,
-                      style: const TextStyle(fontSize: 22,
+                      child: TextField(
+                        controller:   _controllers[i],
+                        focusNode:    _focusNodes[i],
+                        textAlign:    TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        keyboardType: TextInputType.number,
+                        maxLength:    1,
+                        cursorColor:  AppTheme.primary,
+                        style: const TextStyle(
+                          fontSize:   24,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary),
-                      decoration: const InputDecoration(
-                        counterText: '',
-                        border:      InputBorder.none,
+                          color:      Colors.white,    // ← hardcoded white, not AppTheme
+                          height:     1,
+                        ),
+                        decoration: const InputDecoration(
+                          counterText:     '',
+                          border:          InputBorder.none,
+                          enabledBorder:   InputBorder.none,
+                          focusedBorder:   InputBorder.none,
+                          filled:          false,      // ← no fill at all
+                          contentPadding:  EdgeInsets.zero,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        onChanged: (v) => _onDigitChanged(i, v),
+                        onTap:     () => setState(() {}),
                       ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      onChanged: (v) => _onDigitChanged(i, v),
-                      onTap: () => setState(() {}), // Rebuild for border color
                     ),
                   );
                 }),

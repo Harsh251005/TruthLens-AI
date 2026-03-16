@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 from routes.badges_routes import router as badges_router
+from routes.account_routes import router as account_router
 from fastapi.staticfiles import StaticFiles
 import pathlib
 
@@ -48,6 +49,7 @@ app.include_router(password_routes.router, prefix="/api/password", tags=["Passwo
 app.include_router(detect_routes.router, prefix="/api/detect", tags=["Detection"])
 app.include_router(badges_router, prefix="/api/badges", tags=["badges"])
 app.include_router(challenge_router, prefix="/api/challenge", tags=["Challenge"])
+app.include_router(account_router, prefix="/api/account", tags=["Account"])
 
 
 # ── Health Check ─────────────────────────────────────────────────

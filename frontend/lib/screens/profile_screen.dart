@@ -64,6 +64,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool      _isUpdatingPassword = false;
   bool      _isUpdatingAvatar   = false;   // NEW: avatar upload in progress
   bool      _isEditingName      = false;
+  bool      _isDeletingAccount  = false;
+  bool      _isResettingAccount = false;
   String?   _nameError;
   String?   _passwordError;
   String?   _nameSuccess;
@@ -459,6 +461,179 @@ class _ProfileScreenState extends State<ProfileScreen>
           transitionDuration: const Duration(milliseconds: 400),
         ),
             (route) => false,
+      );
+    }
+  }
+
+  // ── Delete Account ────────────────────────────────────────────
+  Future<void> _handleDeleteAccount() async {
+    final passwordController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL)),
+        title: const Text('Delete Account',
+            style: TextStyle(color: AppTheme.error,
+                fontWeight: FontWeight.w700)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This will permanently delete your account and ALL data including scans, badges and streak. This cannot be undone.',
+              style: TextStyle(color: AppTheme.textSecondary,
+                  height: 1.5, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller:  passwordController,
+              obscureText: true,
+              style: const TextStyle(color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText:    'Enter your password to confirm',
+                hintStyle:   const TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 13),
+                filled:      true,
+                fillColor:   AppTheme.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  borderSide: const BorderSide(
+                      color: AppTheme.surfaceBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  borderSide: const BorderSide(
+                      color: AppTheme.surfaceBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
+                  borderSide: const BorderSide(
+                      color: AppTheme.error),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS)),
+            ),
+            child: const Text('Delete Forever'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (passwordController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your password'),
+            backgroundColor: AppTheme.error),
+      );
+      return;
+    }
+
+    setState(() => _isDeletingAccount = true);
+
+    final result = await _authService.deleteAccount(
+        password: passwordController.text);
+
+    if (!mounted) return;
+
+    if (result.success) {
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) => const LoginScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+          transitionDuration: const Duration(milliseconds: 400),
+        ),
+            (route) => false,
+      );
+    } else {
+      setState(() => _isDeletingAccount = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message),
+            backgroundColor: AppTheme.error),
+      );
+    }
+  }
+
+
+// ── Reset Account ─────────────────────────────────────────────
+  Future<void> _handleResetAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusL)),
+        title: const Text('Reset Account',
+            style: TextStyle(color: AppTheme.accent,
+                fontWeight: FontWeight.w700)),
+        content: const Text(
+          'This will reset all your data — scans, streak, badges, avatar and challenge scores. Your account and login details will be kept.',
+          style: TextStyle(color: AppTheme.textSecondary,
+              height: 1.5, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusS)),
+            ),
+            child: const Text('Reset Everything'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isResettingAccount = true);
+
+    final result = await _authService.resetAccount();
+
+    if (!mounted) return;
+
+    setState(() => _isResettingAccount = false);
+
+    if (result.success) {
+      // Reset local avatar state
+      setState(() {
+        _avatarType = 'initial';
+        _avatarData = null;
+        _stats      = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message),
+            backgroundColor: AppTheme.success),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.message),
+            backgroundColor: AppTheme.error),
       );
     }
   }
@@ -933,6 +1108,52 @@ class _ProfileScreenState extends State<ProfileScreen>
               PrimaryButton(
                 label: 'Update Password', onPressed: _handleUpdatePassword,
                 isLoading: _isUpdatingPassword,
+              ),
+
+              const SizedBox(height: 24),
+              _buildSectionLabel('Danger Zone'),
+              const SizedBox(height: 12),
+
+// Reset account button
+              SizedBox(
+                width: double.infinity, height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _isResettingAccount ? null : _handleResetAccount,
+                  icon: _isResettingAccount
+                      ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.accent))
+                      : const Icon(Icons.restart_alt_rounded, size: 18),
+                  label: const Text('Reset Account',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.accent,
+                    side: BorderSide(color: AppTheme.accent.withOpacity(0.5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Delete account button
+              SizedBox(
+                width: double.infinity, height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _isDeletingAccount ? null : _handleDeleteAccount,
+                  icon: _isDeletingAccount
+                      ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.error))
+                      : const Icon(Icons.delete_forever_rounded, size: 18),
+                  label: const Text('Delete Account',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.error,
+                    side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                  ),
+                ),
               ),
             ]),
           ),

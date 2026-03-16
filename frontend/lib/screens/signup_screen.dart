@@ -44,25 +44,36 @@ class _SignupScreenState extends State<SignupScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
-    final result = await _authService.signup(
-      name:     _nameController.text.trim(),
-      email:    _emailController.text.trim(),
-      password: _passwordController.text,
-    );
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    if (result.success && result.user != null) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => EmailVerificationScreen(
-            email: _emailController.text.trim(),
-            user:  result.user!,
-          ),
-        ),
-            (route) => false,
+    try {
+      final result = await _authService.signup(
+        name:     _nameController.text.trim(),
+        email:    _emailController.text.trim(),
+        password: _passwordController.text,
       );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (result.success && result.user != null) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationScreen(
+              email: _emailController.text.trim(),
+              user:  result.user!,
+            ),
+          ),
+              (route) => false,
+        );
+      } else {
+        setState(() => _errorMessage = result.message);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading    = false;
+        _errorMessage = 'An unexpected error occurred. Please try again.';
+      });
+      print('Signup exception: $e');
     }
   }
 
