@@ -61,14 +61,14 @@ class _ScanningOverlayState extends State<ScanningOverlay>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: Listenable.merge([_scanAnim, _pulseAnim]),
-      builder: (_, __) {
+      builder: (_, _) {
         return Stack(
           children: [
             // ── Dark overlay on image ──────────────────────────
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppTheme.radiusL),
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
               ),
             ),
 
@@ -87,15 +87,15 @@ class _ScanningOverlayState extends State<ScanningOverlay>
                   gradient: LinearGradient(
                     colors: [
                       Colors.transparent,
-                      AppTheme.primary.withOpacity(0.8),
+                      AppTheme.primary.withValues(alpha: 0.8),
                       AppTheme.primary,
-                      AppTheme.primary.withOpacity(0.8),
+                      AppTheme.primary.withValues(alpha: 0.8),
                       Colors.transparent,
                     ],
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primary.withOpacity(0.6),
+                      color: AppTheme.primary.withValues(alpha: 0.6),
                       blurRadius: 8,
                       spreadRadius: 2,
                     ),
@@ -115,10 +115,10 @@ class _ScanningOverlayState extends State<ScanningOverlay>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.background.withOpacity(0.85),
+                        color: AppTheme.background.withValues(alpha: 0.85),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                            color: AppTheme.primary.withOpacity(0.5)),
+                            color: AppTheme.primary.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

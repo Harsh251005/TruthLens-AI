@@ -76,8 +76,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => nextScreen,
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, _, _) => nextScreen,
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 600),
       ),
@@ -135,7 +135,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.primary.withOpacity(0.7)),
+                        AppTheme.primary.withValues(alpha: 0.7)),
                   ),
                 ),
               ),
@@ -155,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen>
             shape: BoxShape.circle,
             gradient: AppTheme.primaryGradient,
             boxShadow: [
-              BoxShadow(color: AppTheme.primary.withOpacity(0.4),
+              BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4),
                   blurRadius: 32, spreadRadius: 4),
             ],
           ),

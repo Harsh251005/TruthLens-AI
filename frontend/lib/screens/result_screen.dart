@@ -268,9 +268,9 @@
         decoration: BoxDecoration(
           color:        AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusL),
-          border:       Border.all(color: color.withOpacity(0.3), width: 1.5),
+          border:       Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.15),
+            BoxShadow(color: color.withValues(alpha: 0.15),
                 blurRadius: 24, spreadRadius: 2),
           ],
         ),
@@ -322,10 +322,10 @@
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color:        color.withOpacity(0.15),
+                          color:        color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                           border:       Border.all(
-                              color: color.withOpacity(0.3)),
+                              color: color.withValues(alpha: 0.3)),
                         ),
                         child: const Text('Deepfake Detection',
                             style: TextStyle(fontSize: 10,
@@ -342,10 +342,10 @@
                     Container(
                       width: 52, height: 52,
                       decoration: BoxDecoration(
-                        color:  color.withOpacity(0.15),
+                        color:  color.withValues(alpha: 0.15),
                         shape:  BoxShape.circle,
                         border: Border.all(
-                            color: color.withOpacity(0.4), width: 2),
+                            color: color.withValues(alpha: 0.4), width: 2),
                       ),
                       child: Icon(icon, color: color, size: 26),
                     ),
@@ -375,7 +375,7 @@
                     children: [
                       AnimatedBuilder(
                         animation: _progressAnim,
-                        builder: (_, __) => Text(
+                        builder: (_, _) => Text(
                           '${(_progressAnim.value * 100).toStringAsFixed(1)}%',
                           style: TextStyle(fontSize: 52,
                               fontWeight: FontWeight.w900,
@@ -388,7 +388,7 @@
                         child: Text(
                           'confidence',
                           style: TextStyle(fontSize: 14,
-                              color: color.withOpacity(0.7),
+                              color: color.withValues(alpha: 0.7),
                               fontWeight: FontWeight.w600),
                         ),
                       ),
@@ -400,11 +400,11 @@
                   // Animated confidence bar
                   AnimatedBuilder(
                     animation: _progressAnim,
-                    builder: (_, __) => ClipRRect(
+                    builder: (_, _) => ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value:           _progressAnim.value,
-                        backgroundColor: color.withOpacity(0.12),
+                        backgroundColor: color.withValues(alpha: 0.12),
                         valueColor:      AlwaysStoppedAnimation<Color>(color),
                         minHeight:       8,
                       ),
@@ -454,7 +454,7 @@
                           end:   Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            AppTheme.surface.withOpacity(0.95),
+                            AppTheme.surface.withValues(alpha: 0.95),
                           ],
                         ),
                       ),
@@ -467,7 +467,7 @@
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color:        color.withOpacity(0.9),
+                        color:        color.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [

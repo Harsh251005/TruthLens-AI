@@ -1,16 +1,4 @@
-/// on_device_face_detector.dart
-/// ─────────────────────────────────────────────────────────────────────────────
-/// On-device face detection using Google ML Kit Face Detection.
-///
-/// Replaces the backend's OpenCV Haar Cascade detector.
-/// ML Kit is more accurate, works offline, and requires no server round-trip.
-///
-/// Used by LocalDetectionService before running TFLite inference — ensures
-/// the model only processes images that actually contain a human face.
-/// ─────────────────────────────────────────────────────────────────────────────
-
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:path_provider/path_provider.dart';

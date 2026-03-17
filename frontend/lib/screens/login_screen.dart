@@ -53,8 +53,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (result.success && result.user != null) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => HomeScreen(user: result.user!),
-          transitionsBuilder: (_, animation, __, child) =>
+          pageBuilder: (_, _, _) => HomeScreen(user: result.user!),
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
@@ -113,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withOpacity(0.3),
+                color: AppTheme.primary.withValues(alpha: 0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -213,9 +213,9 @@ class _LoginScreenState extends State<LoginScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color: AppTheme.error.withOpacity(0.1),
+        color: AppTheme.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

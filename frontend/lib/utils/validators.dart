@@ -28,9 +28,15 @@ class Validators {
 
   /// Validates user display name
   static String? name(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Name is required';
-    if (value.trim().length > AppConstants.maxNameLength) {
-      return 'Name must be under ${AppConstants.maxNameLength} characters';
+    if (value == null || value.trim().isEmpty) {
+      return 'Name is required';
+    }
+    if (value.trim().length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    // Only alphabets and spaces allowed
+    if (!RegExp(r"^[a-zA-Z ]+$").hasMatch(value.trim())) {
+      return 'Name must contain only letters';
     }
     return null;
   }

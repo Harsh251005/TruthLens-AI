@@ -83,12 +83,17 @@ class _BatchScanScreenState extends State<BatchScanScreen>
       );
       if (picked.isEmpty) return;
 
-      setState(() {
-        _items       = picked.map((x) => BatchImageItem(file: File(x.path))).toList();
-        _isScanning  = false;
-        _isCancelled = false;
-        _currentIndex = 0;
-      });
+      final newFiles    = picked.map((x) => File(x.path)).toList();
+      final existingPaths = _items.map((i) => i.file.path).toSet();
+
+      // Only add images that aren't already in the grid
+      final uniqueNew = newFiles
+          .where((f) => !existingPaths.contains(f.path))
+          .map((f) => BatchImageItem(file: f))
+          .toList();
+
+      setState(() => _items = [..._items, ...uniqueNew]);
+
     } catch (e) {
       _showSnack('Failed to pick images. Please try again.', isError: true);
     }
@@ -167,9 +172,15 @@ class _BatchScanScreenState extends State<BatchScanScreen>
         fakeCount:  fakeCount,
       );
 
+      // After notification fires — clear grid for fresh start
+      if (!_isCancelled && mounted) {
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) setState(() => _items = []);
+      }
+
       HapticFeedback.heavyImpact();
 
-      // If app is in foreground, also show a snackbar
+      // If app is in foreground, also show a snack_bar
       if (!_isInBackground && mounted) {
         _showSnack(
           'Done! $realCount Authentic, $fakeCount Deepfake found.',
@@ -329,7 +340,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
-              color:  AppTheme.primary.withOpacity(0.1),
+              color:  AppTheme.primary.withValues(alpha: 0.1),
               shape:  BoxShape.circle,
             ),
             child: const Icon(Icons.photo_library_outlined,
@@ -352,10 +363,10 @@ class _BatchScanScreenState extends State<BatchScanScreen>
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.symmetric(horizontal: 40),
             decoration: BoxDecoration(
-              color:        AppTheme.primary.withOpacity(0.06),
+              color:        AppTheme.primary.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
               border: Border.all(
-                  color: AppTheme.primary.withOpacity(0.15)),
+                  color: AppTheme.primary.withValues(alpha: 0.15)),
             ),
             child: const Row(children: [
               Icon(Icons.info_outline,
@@ -429,16 +440,16 @@ class _BatchScanScreenState extends State<BatchScanScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color:        color.withOpacity(0.1),
+        color:        color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border:       Border.all(color: color.withOpacity(0.3)),
+        border:       Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text(value, style: TextStyle(fontSize: 13,
             fontWeight: FontWeight.w800, color: color)),
         const SizedBox(width: 4),
         Text(label, style: TextStyle(fontSize: 11,
-            color: color.withOpacity(0.8))),
+            color: color.withValues(alpha: 0.8))),
       ]),
     );
   }
@@ -540,7 +551,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.85),
+        color: color.withValues(alpha: 0.85),
         borderRadius: const BorderRadius.only(
           bottomLeft:  Radius.circular(AppTheme.radiusM - 1),
           bottomRight: Radius.circular(AppTheme.radiusM - 1),
@@ -596,7 +607,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
               icon:  const Icon(Icons.photo_library_outlined, size: 18),
               label: Text(_items.isEmpty
                   ? 'Select Images'
-                  : 'Change Selection',
+                  : 'Add More Images',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primary,
@@ -641,7 +652,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.error,
                 side:    BorderSide(
-                    color: AppTheme.error.withOpacity(0.5)),
+                    color: AppTheme.error.withValues(alpha: 0.5)),
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape:   RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusM)),

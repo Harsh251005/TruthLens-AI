@@ -130,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -152,9 +152,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 48, height: 48,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.15),
+              color: AppTheme.primary.withValues(alpha: 0.15),
               shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
             ),
             child: const Icon(Icons.shield_outlined,
                 color: AppTheme.primary, size: 24),
@@ -189,10 +189,10 @@ class _HomeScreenState extends State<HomeScreen> {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusL),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.primary.withOpacity(0.1),
+                color: AppTheme.primary.withValues(alpha: 0.1),
                 blurRadius: 20, spreadRadius: 2,
               ),
             ],
@@ -229,10 +229,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.15),
+                  color: AppTheme.primary.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: AppTheme.primary.withOpacity(0.3)),
+                      color: AppTheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: const Icon(Icons.document_scanner_rounded,
                     color: AppTheme.primary, size: 30),
@@ -294,10 +294,10 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 16, spreadRadius: 1,
           ),
         ],
@@ -309,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label, style: TextStyle(
-                  fontSize: 13, color: color.withOpacity(0.8),
+                  fontSize: 13, color: color.withValues(alpha: 0.8),
                   fontWeight: FontWeight.w600, letterSpacing: 0.3)),
               Icon(icon, color: color, size: 18),
             ],
@@ -344,7 +344,7 @@ class _HomeScreenState extends State<HomeScreen> {
               gradient: AppTheme.primaryGradient,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(
-                color: AppTheme.primary.withOpacity(0.3),
+                color: AppTheme.primary.withValues(alpha: 0.3),
                 blurRadius: 24, spreadRadius: 4,
               )],
             ),
@@ -368,8 +368,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 await Navigator.of(context).push(
                   PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => const ScanScreen(),
-                    transitionsBuilder: (_, animation, __, child) =>
+                    pageBuilder: (_, _, _) => const ScanScreen(),
+                    transitionsBuilder: (_, animation, _, child) =>
                         SlideTransition(
                           position: Tween<Offset>(
                             begin: const Offset(1, 0), end: Offset.zero,
@@ -511,14 +511,14 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(AppTheme.paddingL),
-        decoration: AppTheme.cardDecoration(borderColor: color.withOpacity(0.2)),
+        decoration: AppTheme.cardDecoration(borderColor: color.withValues(alpha: 0.2)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppTheme.radiusS),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -564,7 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: step.$2.withOpacity(0.15),
+                      color: step.$2.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(AppTheme.radiusS),
                     ),
                     child: Icon(step.$1, color: step.$2, size: 22),

@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
-import '../services/storage_service.dart';
 import '../utils/app_theme.dart';
 import '../models/user_model.dart';
 import 'home_screen.dart';
@@ -60,8 +59,12 @@ class _EmailVerificationScreenState
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes)  f.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     _cooldownTimer?.cancel();
     super.dispose();
   }
@@ -127,9 +130,9 @@ class _EmailVerificationScreenState
       // Navigate to home screen
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) =>
+          pageBuilder: (_, _, _) =>
               HomeScreen(user: result.user!),
-          transitionsBuilder: (_, animation, __, child) =>
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
@@ -141,8 +144,10 @@ class _EmailVerificationScreenState
         _isVerifying  = false;
         _errorMessage = result.message;
         // Clear OTP fields on error
-        for (final c in _controllers) c.clear();
-        _focusNodes[0].requestFocus();
+        for (final c in _controllers) {
+          c.clear();
+          _focusNodes[0].requestFocus();
+        }
       });
     }
   }
@@ -166,9 +171,11 @@ class _EmailVerificationScreenState
       if (result.success) {
         _successMessage = 'A new code has been sent to your email.';
         // Clear fields for new code
-        for (final c in _controllers) c.clear();
-        _focusNodes[0].requestFocus();
-        _startCooldown();
+        for (final c in _controllers) {
+          c.clear();
+          _focusNodes[0].requestFocus();
+          _startCooldown();
+        }
       } else {
         _errorMessage = result.message;
       }
@@ -199,10 +206,10 @@ class _EmailVerificationScreenState
               Container(
                 width: 80, height: 80,
                 decoration: BoxDecoration(
-                  color:  AppTheme.primary.withOpacity(0.1),
+                  color:  AppTheme.primary.withValues(alpha: 0.1),
                   shape:  BoxShape.circle,
                   border: Border.all(
-                      color: AppTheme.primary.withOpacity(0.3)),
+                      color: AppTheme.primary.withValues(alpha: 0.3)),
                 ),
                 child: const Icon(Icons.mark_email_unread_outlined,
                     color: AppTheme.primary, size: 38),
@@ -290,10 +297,10 @@ class _EmailVerificationScreenState
                   width:   double.infinity,
                   padding: const EdgeInsets.all(AppTheme.paddingM),
                   decoration: BoxDecoration(
-                    color:        AppTheme.error.withOpacity(0.1),
+                    color:        AppTheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusS),
                     border: Border.all(
-                        color: AppTheme.error.withOpacity(0.3)),
+                        color: AppTheme.error.withValues(alpha: 0.3)),
                   ),
                   child: Row(children: [
                     const Icon(Icons.error_outline,
@@ -313,10 +320,10 @@ class _EmailVerificationScreenState
                   width:   double.infinity,
                   padding: const EdgeInsets.all(AppTheme.paddingM),
                   decoration: BoxDecoration(
-                    color:        AppTheme.success.withOpacity(0.1),
+                    color:        AppTheme.success.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusS),
                     border: Border.all(
-                        color: AppTheme.success.withOpacity(0.3)),
+                        color: AppTheme.success.withValues(alpha: 0.3)),
                   ),
                   child: Row(children: [
                     const Icon(Icons.check_circle_outline,

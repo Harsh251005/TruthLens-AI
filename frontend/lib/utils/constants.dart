@@ -60,5 +60,5 @@ class AppConstants {
       '&language=en'
       '&sortBy=publishedAt'
       '&pageSize=20'
-      '&apiKey=${newsApiKey}';
+      '&apiKey=$newsApiKey';
 }

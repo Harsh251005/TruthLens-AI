@@ -75,8 +75,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const LoginScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, _, _) => const LoginScreen(),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),
       ),
@@ -142,13 +142,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Container(
                 width: 120, height: 120,
                 decoration: BoxDecoration(
-                  color: slide.color.withOpacity(0.15),
+                  color: slide.color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: slide.color.withOpacity(0.3), width: 2),
+                      color: slide.color.withValues(alpha: 0.3), width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: slide.color.withOpacity(0.2),
+                      color: slide.color.withValues(alpha: 0.2),
                       blurRadius: 40, spreadRadius: 8,
                     ),
                   ],
@@ -204,7 +204,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end:   Alignment.bottomCenter,
-          colors: [Colors.transparent, AppTheme.background.withOpacity(0.95)],
+          colors: [Colors.transparent, AppTheme.background.withValues(alpha: 0.95)],
         ),
       ),
       child: Column(

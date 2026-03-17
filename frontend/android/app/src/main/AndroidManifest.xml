@@ -1,23 +1,26 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network and storage permissions -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 
-    <!-- Push Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
 
     <application
+        tools:ignore="MissingClass"
         android:label="TruthLensAI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="33">
 
         <activity
             android:name=".MainActivity"
@@ -40,19 +43,19 @@
 
         </activity>
 
-        <!-- Required by image_cropper (UCrop) -->
         <activity
+            tools:ignore="MissingClass"
             android:name="com.yalantis.ucrop.UCropActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="unspecified"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 
-        <!-- Required by workmanager -->
         <service
+            tools:ignore="MissingClass"
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"/>
 
-        <!-- Restart scheduled notifications after device reboot -->
         <receiver
+            tools:ignore="MissingClass,Typos"
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
             android:exported="false">
             <intent-filter>
@@ -72,7 +75,6 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Required by url_launcher to open links in browser -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>

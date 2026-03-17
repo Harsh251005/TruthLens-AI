@@ -78,7 +78,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
 
     // Political Manipulation
     {
-      'fact':     'In March 2022, a deepfake video of Ukrainian President Zelenskyy urging soldiers to surrender was broadcast on hacked TV channels.',
+      'fact':     'In March 2022, a deepfake video of Ukrainian President Zelensky urging soldiers to surrender was broadcast on hacked TV channels.',
       'source':   'BBC, March 2022',
       'category': 'Political',
       'emoji':    '🎭',
@@ -553,9 +553,9 @@ class _AwarenessScreenState extends State<AwarenessScreen>
         Container(
           padding: const EdgeInsets.all(AppTheme.paddingM),
           decoration: BoxDecoration(
-            color:        AppTheme.primary.withOpacity(0.08),
+            color:        AppTheme.primary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
           ),
           child: Row(children: [
             const Icon(Icons.auto_awesome,
@@ -614,10 +614,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
             width:   double.infinity,
             padding: const EdgeInsets.all(AppTheme.paddingL),
             decoration: BoxDecoration(
-              color:        const Color(0xFF1565C0).withOpacity(0.08),
+              color:        const Color(0xFF1565C0).withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusL),
               border: Border.all(
-                  color: const Color(0xFF1565C0).withOpacity(0.3)),
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.3)),
             ),
             child: const Row(children: [
               Icon(Icons.newspaper_rounded,
@@ -663,7 +663,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
       decoration: BoxDecoration(
         color:        AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border:       Border.all(color: color.withOpacity(0.25)),
+        border:       Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,9 +677,9 @@ class _AwarenessScreenState extends State<AwarenessScreen>
               padding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color:        color.withOpacity(0.12),
+                color:        color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border:       Border.all(color: color.withOpacity(0.3)),
+                border:       Border.all(color: color.withValues(alpha: 0.3)),
               ),
               child: Text(fact['category'] ?? '',
                   style: TextStyle(fontSize: 11,
@@ -759,9 +759,9 @@ class _AwarenessScreenState extends State<AwarenessScreen>
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color:  color.withOpacity(0.12),
+                color:  color.withValues(alpha: 0.12),
                 shape:  BoxShape.circle,
-                border: Border.all(color: color.withOpacity(0.4)),
+                border: Border.all(color: color.withValues(alpha: 0.4)),
               ),
               child: Center(
                 child: Text(cas['emoji'] ?? '⚠️',
@@ -785,7 +785,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
               decoration: BoxDecoration(
                 color:        AppTheme.surface,
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border:       Border.all(color: color.withOpacity(0.2)),
+                border:       Border.all(color: color.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -796,7 +796,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color:        color.withOpacity(0.12),
+                        color:        color.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(cas['year'] ?? '',
@@ -809,10 +809,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color:        color.withOpacity(0.08),
+                        color:        color.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
-                            color: color.withOpacity(0.3)),
+                            color: color.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         (cas['severity'] ?? '').toUpperCase(),
@@ -860,10 +860,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
         Container(
           padding: const EdgeInsets.all(AppTheme.paddingM),
           decoration: BoxDecoration(
-            color:        AppTheme.success.withOpacity(0.08),
+            color:        AppTheme.success.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
             border: Border.all(
-                color: AppTheme.success.withOpacity(0.2)),
+                color: AppTheme.success.withValues(alpha: 0.2)),
           ),
           child: const Row(children: [
             Icon(Icons.tips_and_updates_outlined,
@@ -907,10 +907,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
           Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
-              color:  AppTheme.primary.withOpacity(0.1),
+              color:  AppTheme.primary.withValues(alpha: 0.1),
               shape:  BoxShape.circle,
               border: Border.all(
-                  color: AppTheme.primary.withOpacity(0.3)),
+                  color: AppTheme.primary.withValues(alpha: 0.3)),
             ),
             child: Center(
               child: Text(sign['emoji'] ?? '🔍',
@@ -934,10 +934,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color:        AppTheme.primary.withOpacity(0.06),
+                    color:        AppTheme.primary.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                        color: AppTheme.primary.withOpacity(0.15)),
+                        color: AppTheme.primary.withValues(alpha: 0.15)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -987,10 +987,10 @@ class _AwarenessScreenState extends State<AwarenessScreen>
         Container(
           padding: const EdgeInsets.all(AppTheme.paddingM),
           decoration: BoxDecoration(
-            color:        AppTheme.accent.withOpacity(0.08),
+            color:        AppTheme.accent.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
             border: Border.all(
-                color: AppTheme.accent.withOpacity(0.2)),
+                color: AppTheme.accent.withValues(alpha: 0.2)),
           ),
           child: const Row(children: [
             Icon(Icons.quiz_outlined, color: AppTheme.accent, size: 18),
@@ -1077,14 +1077,14 @@ class _AwarenessScreenState extends State<AwarenessScreen>
       decoration: BoxDecoration(
         color: _quizSubmitted && isAnswered
             ? (isCorrect
-            ? AppTheme.success.withOpacity(0.06)
-            : AppTheme.error.withOpacity(0.06))
+            ? AppTheme.success.withValues(alpha: 0.06)
+            : AppTheme.error.withValues(alpha: 0.06))
             : AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
         border: Border.all(
           color: _quizSubmitted && isAnswered
               ? (isCorrect ? AppTheme.success : AppTheme.error)
-              .withOpacity(0.3)
+              .withValues(alpha: 0.3)
               : AppTheme.surfaceBorder,
         ),
       ),
@@ -1098,7 +1098,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
               Container(
                 width: 26, height: 26,
                 decoration: BoxDecoration(
-                  color: AppTheme.accent.withOpacity(0.12),
+                  color: AppTheme.accent.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -1136,7 +1136,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: (isCorrect ? AppTheme.success : AppTheme.error)
-                    .withOpacity(0.08),
+                    .withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1184,17 +1184,17 @@ class _AwarenessScreenState extends State<AwarenessScreen>
 
     if (submitted && isSelected) {
       buttonColor = isCorrect
-          ? AppTheme.success.withOpacity(0.15)
-          : AppTheme.error.withOpacity(0.15);
+          ? AppTheme.success.withValues(alpha: 0.15)
+          : AppTheme.error.withValues(alpha: 0.15);
       borderColor = isCorrect ? AppTheme.success : AppTheme.error;
       textColor   = isCorrect ? AppTheme.success : AppTheme.error;
     } else if (submitted && !isSelected && isCorrect) {
       // Show the correct answer if user got it wrong
-      buttonColor = AppTheme.success.withOpacity(0.08);
-      borderColor = AppTheme.success.withOpacity(0.4);
+      buttonColor = AppTheme.success.withValues(alpha: 0.08);
+      borderColor = AppTheme.success.withValues(alpha: 0.4);
       textColor   = AppTheme.success;
     } else if (isSelected) {
-      buttonColor = AppTheme.accent.withOpacity(0.15);
+      buttonColor = AppTheme.accent.withValues(alpha: 0.15);
       borderColor = AppTheme.accent;
       textColor   = AppTheme.accent;
     } else {
@@ -1242,7 +1242,7 @@ class _AwarenessScreenState extends State<AwarenessScreen>
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Text(grade.split(' ')[0],

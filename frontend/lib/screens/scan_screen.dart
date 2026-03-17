@@ -64,11 +64,11 @@ class _ScanScreenState extends State<ScanScreen> {
     if (response.success && response.result != null) {
       Navigator.of(context).push(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => ResultScreen(
+          pageBuilder: (_, _, _) => ResultScreen(
             result:    response.result!,
             imagePath: _selectedImage!.path,
           ),
-          transitionsBuilder: (_, animation, __, child) =>
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
@@ -135,9 +135,9 @@ class _ScanScreenState extends State<ScanScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color:        AppTheme.primary.withOpacity(0.08),
+        color:        AppTheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: const Row(children: [
         Icon(Icons.tips_and_updates_outlined,
@@ -188,7 +188,7 @@ class _ScanScreenState extends State<ScanScreen> {
             Container(
               width: 72, height: 72,
               decoration: BoxDecoration(
-                color:  AppTheme.primary.withOpacity(0.1),
+                color:  AppTheme.primary.withValues(alpha: 0.1),
                 shape:  BoxShape.circle,
               ),
               child: const Icon(
@@ -241,13 +241,13 @@ class _ScanScreenState extends State<ScanScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.accent.withOpacity(0.15),
-                  AppTheme.accent.withOpacity(0.05),
+                  AppTheme.accent.withValues(alpha: 0.15),
+                  AppTheme.accent.withValues(alpha: 0.05),
                 ],
               ),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
               border: Border.all(
-                  color: AppTheme.accent.withOpacity(0.4)),
+                  color: AppTheme.accent.withValues(alpha: 0.4)),
             ),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -300,9 +300,9 @@ class _ScanScreenState extends State<ScanScreen> {
       width:   double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color:        AppTheme.error.withOpacity(0.1),
+        color:        AppTheme.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         const Icon(Icons.error_outline, color: AppTheme.error, size: 18),

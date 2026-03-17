@@ -1,12 +1,3 @@
-/// hybrid_detection_service.dart
-/// ─────────────────────────────────────────────────────────────────────────────
-/// Tries server-based detection first (full EXIF + LLM explanation).
-/// If the server is unreachable, silently falls back to on-device TFLite.
-///
-/// This is the single entry point for all scan operations.
-/// Adding new server-side features in future automatically works here.
-/// ─────────────────────────────────────────────────────────────────────────────
-
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'detection_service.dart';

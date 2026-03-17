@@ -1,20 +1,3 @@
-/// tflite_model_service.dart
-/// ─────────────────────────────────────────────────────────────────────────────
-/// Low-level TFLite wrapper for the TruthLens deepfake detection model.
-///
-/// Responsibilities:
-///   - Load the .tflite model from Flutter assets (once, as a singleton)
-///   - Preprocess a raw image into the tensor format the model expects
-///   - Run inference and return the raw sigmoid score
-///
-/// CRITICAL PREPROCESSING CONTRACT (must match training & Python detector.py):
-///   - Image resized to 224×224 pixels
-///   - Pixel values kept as raw float32 in [0, 255] — NO division by 255
-///   - EfficientNetB0 has a built-in Rescaling layer that handles normalization
-///   - Dividing by 255 here causes the model to always predict REAL
-/// ─────────────────────────────────────────────────────────────────────────────
-
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
@@ -177,8 +160,6 @@ class TfliteModelService {
     return rawScore;
   }
 
-  /// Convert flat Float32List buffer → nested List<List<List<List<double>>>>
-  /// Required shape: [1][height][width][channels]
   List<List<List<List<double>>>> _bufferToNestedList(Float32List buffer) {
     const h = _inputSize;
     const w = _inputSize;

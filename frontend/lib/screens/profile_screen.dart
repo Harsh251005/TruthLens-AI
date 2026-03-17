@@ -17,7 +17,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/detection_service.dart';
 import '../services/storage_service.dart';
@@ -204,8 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       decoration: BoxDecoration(
-                        color:  avatar.color.withOpacity(isSelected ? 0.3 : 0.12),
-                        borderRadius: BorderRadius.circular(16),
+                        color: avatar.color.withValues(alpha: isSelected ? 0.3 : 0.12),                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? avatar.color
@@ -313,6 +311,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     // Step 2: Open our custom Flutter crop page
     // This is a full-screen page we control entirely — no native toolbar
+    if (!mounted) return;
+
     final croppedBytes = await Navigator.of(context).push<Uint8List>(
       MaterialPageRoute(
         builder: (_) => _CropPage(imageBytes: bytes),
@@ -466,8 +466,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder:      (_, __, ___) => const LoginScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
+          pageBuilder:      (_, _, _) => const LoginScreen(),
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
@@ -549,6 +549,9 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
 
     if (confirmed != true) return;
+
+    if (!mounted) return;
+
     if (passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your password'),
@@ -567,8 +570,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (result.success) {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, __, ___) => const LoginScreen(),
-          transitionsBuilder: (_, animation, __, child) =>
+          pageBuilder: (_, _, _) => const LoginScreen(),
+          transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
         ),
@@ -662,7 +665,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ? const Center(
           child: CircularProgressIndicator(color: AppTheme.primary))
           : NestedScrollView(
-        headerSliverBuilder: (_, __) => [
+        headerSliverBuilder: (_, _) => [
           SliverToBoxAdapter(child: _buildHeroHeader()),
         ],
         body: Column(children: [
@@ -758,7 +761,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       border: Border.all(color: AppTheme.background, width: 2),
                       boxShadow: [
                         BoxShadow(
-                          color:      AppTheme.primary.withOpacity(0.4),
+                          color:      AppTheme.primary.withValues(alpha: 0.4),
                           blurRadius: 8,
                         ),
                       ],
@@ -872,8 +875,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         _buildBadgesRow(),
         const SizedBox(height: 24),
         _buildSectionLabel('Email Address'),
-        const SizedBox(height: 24),
-        _buildSectionLabel('Email Address'),
         const SizedBox(height: 12),
         _buildReadOnlyField(
           icon:  Icons.email_outlined,
@@ -936,7 +937,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color:        AppTheme.primary.withOpacity(0.1),
+            color:        AppTheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusS),
           ),
           child: const Icon(Icons.person_outline, color: AppTheme.primary, size: 22),
@@ -960,9 +961,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color:  AppTheme.primary.withOpacity(0.1),
+              color:  AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
             ),
             child: const Text('Edit', style: TextStyle(
                 color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w600)),
@@ -982,7 +983,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color:        AppTheme.textSecondary.withOpacity(0.1),
+            color:        AppTheme.textSecondary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusS),
           ),
           child: Icon(icon, color: AppTheme.textSecondary, size: 22),
@@ -1009,7 +1010,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppTheme.error,
-          side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+          side: BorderSide(color: AppTheme.error.withValues(alpha: 0.5)),
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusM)),
         ),
@@ -1025,12 +1026,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Container(
         padding: const EdgeInsets.all(AppTheme.paddingL),
         decoration: AppTheme.cardDecoration(
-            borderColor: AppTheme.accent.withOpacity(0.3)),
+            borderColor: AppTheme.accent.withValues(alpha: 0.3)),
         child: Row(children: [
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color:        AppTheme.accent.withOpacity(0.1),
+              color:        AppTheme.accent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(AppTheme.radiusS),
             ),
             child: const Icon(Icons.emoji_events_rounded,
@@ -1064,9 +1065,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         Container(
           padding: const EdgeInsets.all(AppTheme.paddingM),
           decoration: BoxDecoration(
-            color:        AppTheme.primary.withOpacity(0.08),
+            color:        AppTheme.primary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border:       Border.all(color: AppTheme.primary.withOpacity(0.2)),
+            border:       Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
           ),
           child: const Row(children: [
             Icon(Icons.info_outline, color: AppTheme.primary, size: 18),
@@ -1091,7 +1092,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color:        AppTheme.accent.withOpacity(0.1),
+                  color:        AppTheme.accent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: const Icon(Icons.local_fire_department_rounded,
@@ -1112,7 +1113,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               )),
               Switch(
                 value:          _streakNotifEnabled,
-                activeColor:    AppTheme.accent,
+                activeThumbColor: AppTheme.accent,
                 onChanged: (val) async {
                   setState(() => _streakNotifEnabled = val);
                   await NotificationService().setStreakNotifEnabled(val);
@@ -1127,7 +1128,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               Container(
                 width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color:        AppTheme.primary.withOpacity(0.1),
+                  color:        AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
                 ),
                 child: const Icon(Icons.emoji_events_rounded,
@@ -1148,7 +1149,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               )),
               Switch(
                 value:       _badgeNotifEnabled,
-                activeColor: AppTheme.primary,
+                activeThumbColor: AppTheme.primary,
                 onChanged: (val) async {
                   setState(() => _badgeNotifEnabled = val);
                   await NotificationService().setBadgeNotifEnabled(val);
@@ -1225,7 +1226,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.accent,
-                    side: BorderSide(color: AppTheme.accent.withOpacity(0.5)),
+                    side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.5)),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusM)),
                   ),
@@ -1246,7 +1247,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.error,
-                    side: BorderSide(color: AppTheme.error.withOpacity(0.5)),
+                    side: BorderSide(color: AppTheme.error.withValues(alpha: 0.5)),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusM)),
                   ),
@@ -1274,9 +1275,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color:        color.withOpacity(0.1),
+        color:        color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border:       Border.all(color: color.withOpacity(0.3)),
+        border:       Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Icon(isError ? Icons.error_outline : Icons.check_circle_outline,
@@ -1414,7 +1415,7 @@ class _CropPageState extends State<_CropPage> {
             image:           MemoryImage(widget.imageBytes),
             shape:           CustomCropShape.Circle,
             ratio:           Ratio(width: 1, height: 1),
-            overlayColor:    Colors.black.withOpacity(0.55),
+            overlayColor:    Colors.black.withValues(alpha: 0.55),
             backgroundColor: AppTheme.background,
             imageFit:        CustomImageFit.fillCropSpace,
           ),
@@ -1448,9 +1449,9 @@ class _CropPageState extends State<_CropPage> {
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color:  AppTheme.primary.withOpacity(0.12),
+            color:  AppTheme.primary.withValues(alpha: 0.12),
             shape:  BoxShape.circle,
-            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: Icon(icon, color: AppTheme.primary, size: 22),
         ),

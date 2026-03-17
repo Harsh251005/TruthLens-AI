@@ -81,7 +81,7 @@ class AboutScreen extends StatelessWidget {
               gradient: AppTheme.primaryGradient,
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(
-                color: AppTheme.primary.withOpacity(0.3),
+                color: AppTheme.primary.withValues(alpha: 0.3),
                 blurRadius: 24, spreadRadius: 4,
               )],
             ),
@@ -144,7 +144,7 @@ class AboutScreen extends StatelessWidget {
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: step.$2.withOpacity(0.15),
+                      color: step.$2.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(AppTheme.radiusS),
                     ),
                     child: Icon(step.$1, color: step.$2, size: 22),
@@ -196,13 +196,13 @@ class AboutScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(AppTheme.paddingL),
         decoration: AppTheme.cardDecoration(
-            borderColor: tech.$2.withOpacity(0.2)),
+            borderColor: tech.$2.withValues(alpha: 0.2)),
         child: Row(
           children: [
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: tech.$2.withOpacity(0.15),
+                color: tech.$2.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(AppTheme.radiusS),
               ),
               child: Icon(tech.$1, color: tech.$2, size: 22),
@@ -238,7 +238,7 @@ class AboutScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(
-          borderColor: AppTheme.success.withOpacity(0.2)),
+          borderColor: AppTheme.success.withValues(alpha: 0.2)),
       child: Column(
         children: tips.map((tip) => Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -269,7 +269,7 @@ class AboutScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(
-          borderColor: AppTheme.error.withOpacity(0.2)),
+          borderColor: AppTheme.error.withValues(alpha: 0.2)),
       child: Column(
         children: limitations.map((item) => Padding(
           padding: const EdgeInsets.only(bottom: 10),

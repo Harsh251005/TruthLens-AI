@@ -9,7 +9,6 @@ import '../utils/app_theme.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
-import 'home_screen.dart';
 import 'email_verification_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -73,7 +72,7 @@ class _SignupScreenState extends State<SignupScreen> {
         _isLoading    = false;
         _errorMessage = 'An unexpected error occurred. Please try again.';
       });
-      print('Signup exception: $e');
+      debugPrint('Signup exception: $e');
     }
   }
 
@@ -121,7 +120,7 @@ class _SignupScreenState extends State<SignupScreen> {
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
             boxShadow: [
               BoxShadow(
-                color: AppTheme.accent.withOpacity(0.3),
+                color: AppTheme.accent.withValues(alpha: 0.3),
                 blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
@@ -240,9 +239,9 @@ class _SignupScreenState extends State<SignupScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color: AppTheme.error.withOpacity(0.1),
+        color: AppTheme.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

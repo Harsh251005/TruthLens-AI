@@ -36,7 +36,7 @@ class UserModel {
     this.isVerified = true,
   });
 
-  // ── Deserialise from API / SharedPreferences JSON ─────────────
+  // ── Deserialize from API / SharedPreferences JSON ─────────────
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id:         json['id']          as int,

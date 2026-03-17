@@ -115,9 +115,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Container(
           width: 56, height: 56,
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
+            color: AppTheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: const Icon(Icons.mail_outline_rounded,
               color: AppTheme.primary, size: 28),
@@ -138,9 +138,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
-        color: AppTheme.error.withOpacity(0.1),
+        color: AppTheme.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         const Icon(Icons.error_outline, color: AppTheme.error, size: 18),

@@ -65,9 +65,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withOpacity(0.1),
+                  color: AppTheme.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppTheme.success.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
                 ),
                 child: const Icon(Icons.check_circle_outline,
                     color: AppTheme.success, size: 36),
@@ -89,8 +89,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   Navigator.of(context).pop();
                   Navigator.of(context).pushAndRemoveUntil(
                     PageRouteBuilder(
-                      pageBuilder: (_, __, ___) => const LoginScreen(),
-                      transitionsBuilder: (_, animation, __, child) =>
+                      pageBuilder: (_, _, _) => const LoginScreen(),
+                      transitionsBuilder: (_, animation, _, child) =>
                           FadeTransition(opacity: animation, child: child),
                       transitionDuration: const Duration(milliseconds: 400),
                     ),
@@ -168,9 +168,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(AppTheme.paddingM),
                           decoration: BoxDecoration(
-                            color: AppTheme.error.withOpacity(0.1),
+                            color: AppTheme.error.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                            border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+                            border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
                           ),
                           child: Row(children: [
                             const Icon(Icons.error_outline,
@@ -206,9 +206,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         Container(
           width: 56, height: 56,
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.1),
+            color: AppTheme.primary.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: const Icon(Icons.lock_reset_rounded,
               color: AppTheme.primary, size: 28),

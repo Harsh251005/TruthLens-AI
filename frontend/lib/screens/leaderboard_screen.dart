@@ -49,7 +49,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
 
   Future<void> _loadAllTime() async {
     setState(() => _isLoadingAllTime = true);
-    final data = await _detectionService.getLeaderboard(period: 'alltime');
+    final data = await _detectionService.getLeaderboard(period: 'all_time');
     if (!mounted) return;
     setState(() { _allTimeData = data; _isLoadingAllTime = false; });
   }
@@ -212,14 +212,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.primary.withOpacity(0.15),
-            AppTheme.primary.withOpacity(0.05),
+            AppTheme.primary.withValues(alpha: 0.15),
+            AppTheme.primary.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end:   Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         // Grade circle
@@ -227,7 +227,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           width: 56, height: 56,
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
-            color:  color.withOpacity(0.15),
+            color:  color.withValues(alpha: 0.15),
             border: Border.all(color: color, width: 2),
           ),
           child: Center(
@@ -281,9 +281,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
       padding: const EdgeInsets.symmetric(
           vertical: 12, horizontal: AppTheme.paddingL),
       decoration: BoxDecoration(
-        color:        color.withOpacity(0.08),
+        color:        color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border:       Border.all(color: color.withOpacity(0.3)),
+        border:       Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
         Icon(Icons.emoji_events_rounded, color: color, size: 20),
@@ -303,7 +303,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           padding: const EdgeInsets.symmetric(
               horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color:        color.withOpacity(0.15),
+            color:        color.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text('#$rank',
@@ -331,7 +331,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
         border: Border.all(
-            color: AppTheme.primary.withOpacity(0.2)),
+            color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -390,12 +390,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           width:  70,
           height: height,
           decoration: BoxDecoration(
-            color:        color.withOpacity(0.15),
+            color:        color.withValues(alpha: 0.15),
             borderRadius: const BorderRadius.only(
               topLeft:  Radius.circular(8),
               topRight: Radius.circular(8),
             ),
-            border: Border.all(color: color.withOpacity(0.4)),
+            border: Border.all(color: color.withValues(alpha: 0.4)),
           ),
           child: Center(
             child: Text(
@@ -426,12 +426,12 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
           horizontal: AppTheme.paddingL, vertical: 12),
       decoration: BoxDecoration(
         color: isTopThree
-            ? rankColor.withOpacity(0.05)
+            ? rankColor.withValues(alpha: 0.05)
             : AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         border: Border.all(
           color: isTopThree
-              ? rankColor.withOpacity(0.2)
+              ? rankColor.withValues(alpha: 0.2)
               : AppTheme.surfaceBorder,
         ),
       ),
@@ -485,7 +485,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
               padding: const EdgeInsets.symmetric(
                   horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: _gradeColor(entry.grade).withOpacity(0.12),
+                color: _gradeColor(entry.grade).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(entry.grade,

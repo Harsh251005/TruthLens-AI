@@ -633,7 +633,7 @@ class DetectionService {
 
   // ── Get Leaderboard ───────────────────────────────────────────
   Future<LeaderboardData?> getLeaderboard({
-    String period = 'alltime',
+    String period = 'all-time',
   }) async {
     try {
       final savedUser = await StorageService.getSavedUser();

@@ -314,13 +314,13 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen> {
       padding: const EdgeInsets.all(AppTheme.paddingM),
       decoration: BoxDecoration(
         color: _isUsingFallback
-            ? AppTheme.accent.withOpacity(0.08)
-            : AppTheme.primary.withOpacity(0.08),
+            ? AppTheme.accent.withValues(alpha: 0.08)
+            : AppTheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         border: Border.all(
           color: _isUsingFallback
-              ? AppTheme.accent.withOpacity(0.2)
-              : AppTheme.primary.withOpacity(0.2),
+              ? AppTheme.accent.withValues(alpha: 0.2)
+              : AppTheme.primary.withValues(alpha: 0.2),
         ),
       ),
       child: Row(children: [
@@ -376,7 +376,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen> {
                   height:     160,
                   width:      double.infinity,
                   fit:        BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   loadingBuilder: (_, child, progress) {
                     if (progress == null) return child;
                     return Container(
@@ -406,7 +406,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color:        AppTheme.primary.withOpacity(0.1),
+                          color:        AppTheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(article.source,

@@ -448,7 +448,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     return Column(children: [
       AnimatedBuilder(
         animation: _timerAnim,
-        builder: (_, __) => LinearProgressIndicator(
+        builder: (_, _) => LinearProgressIndicator(
           value:           1.0 - _timerAnim.value,
           backgroundColor: AppTheme.surfaceBorder,
           valueColor:      AlwaysStoppedAnimation<Color>(color),
@@ -482,9 +482,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         margin:  const EdgeInsets.fromLTRB(20, 0, 20, 12),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         decoration: BoxDecoration(
-          color:        AppTheme.accent.withOpacity(0.15),
+          color:        AppTheme.accent.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(20),
-          border:       Border.all(color: AppTheme.accent.withOpacity(0.4)),
+          border:       Border.all(color: AppTheme.accent.withValues(alpha: 0.4)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           const Text('🔥', style: TextStyle(fontSize: 18)),
@@ -504,10 +504,10 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     Color? overlayColor;
     if (_hasGuessed) {
       if (_roundState == RoundState.correct) {
-        overlayColor = AppTheme.success.withOpacity(0.25);
+        overlayColor = AppTheme.success.withValues(alpha: 0.25);
       } else if (_roundState == RoundState.wrong ||
           _roundState == RoundState.timeout) {
-        overlayColor = AppTheme.error.withOpacity(0.25);
+        overlayColor = AppTheme.error.withValues(alpha: 0.25);
       }
     }
 
@@ -524,7 +524,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         ),
         boxShadow: [
           BoxShadow(
-            color:      AppTheme.primary.withOpacity(0.1),
+            color:      AppTheme.primary.withValues(alpha: 0.1),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -545,7 +545,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                     color: AppTheme.primary, strokeWidth: 2)),
               );
             },
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               color: AppTheme.surface,
               child: const Center(child: Icon(Icons.broken_image,
                   color: AppTheme.textSecondary, size: 48)),
@@ -588,7 +588,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
               child: Container(
                 width: 36, height: 36,
                 decoration: BoxDecoration(
-                  color:  Colors.black.withOpacity(0.5),
+                  color:  Colors.black.withValues(alpha: 0.5),
                   shape:  BoxShape.circle,
                 ),
                 child: const Center(
@@ -620,7 +620,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.success.withOpacity(0.5)),
+                border: Border.all(color: AppTheme.success.withValues(alpha: 0.5)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -651,7 +651,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(AppTheme.radiusM),
-                border: Border.all(color: AppTheme.error.withOpacity(0.5)),
+                border: Border.all(color: AppTheme.error.withValues(alpha: 0.5)),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -706,9 +706,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         margin:  const EdgeInsets.symmetric(horizontal: 20),
         height:  60,
         decoration: BoxDecoration(
-          color:        color.withOpacity(0.1),
+          color:        color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border:       Border.all(color: color.withOpacity(0.4)),
+          border:       Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Center(
           child: Text('$emoji  $text',
@@ -741,9 +741,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
           width: 120, height: 120,
           decoration: BoxDecoration(
             shape:  BoxShape.circle,
-            color:  color.withOpacity(0.12),
+            color:  color.withValues(alpha: 0.12),
             border: Border.all(color: color, width: 3),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.3),
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3),
                 blurRadius: 24, spreadRadius: 4)],
           ),
           child: Center(
@@ -807,8 +807,8 @@ class _ChallengeScreenState extends State<ChallengeScreen>
                     width: 36, height: 36,
                     decoration: BoxDecoration(
                       color: e.value
-                          ? AppTheme.success.withOpacity(0.15)
-                          : AppTheme.error.withOpacity(0.15),
+                          ? AppTheme.success.withValues(alpha: 0.15)
+                          : AppTheme.error.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: e.value ? AppTheme.success : AppTheme.error,

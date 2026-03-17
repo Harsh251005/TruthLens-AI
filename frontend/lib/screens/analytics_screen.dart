@@ -112,7 +112,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
         Container(
           width: 80, height: 80,
           decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle),
           child: const Icon(Icons.bar_chart_rounded,
               color: AppTheme.primary, size: 40),
@@ -186,15 +186,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           end:    Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.25)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.25)),
       ),
       child: Row(children: [
         Container(
           width: 44, height: 44,
           decoration: BoxDecoration(
-            color:  AppTheme.primary.withOpacity(0.15),
+            color:  AppTheme.primary.withValues(alpha: 0.15),
             shape:  BoxShape.circle,
-            border: Border.all(color: AppTheme.primary.withOpacity(0.3)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: const Icon(Icons.lightbulb_outline,
               color: AppTheme.primary, size: 22),
@@ -266,7 +266,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       decoration: BoxDecoration(
         gradient:     gradient,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Column(children: [
         Icon(icon, color: color, size: 22),
@@ -306,7 +306,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           barTouchData:     BarTouchData(
             touchTooltipData: BarTouchTooltipData(
               getTooltipColor: (_) => AppTheme.surface,
-              getTooltipItem:  (group, _, rod, __) {
+              getTooltipItem:  (group, _, rod, _) {
                 final d = data[group.x];
                 return BarTooltipItem(
                   '${d.date}\n',
@@ -346,7 +346,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
             final d = entry.value;
             // Today is the last bar — highlight it
             final isToday  = i == 6;
-            final barColor = isToday ? AppTheme.primary : AppTheme.primary.withOpacity(0.45);
+            final barColor = isToday ? AppTheme.primary : AppTheme.primary.withValues(alpha: 0.45);
 
             return BarChartGroupData(x: i, barRods: [
               BarChartRodData(
@@ -358,10 +358,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                 // Stack real (green) on top of fake (red)
                 rodStackItems: d.total > 0 ? [
                   BarChartRodStackItem(0, d.fakeCount.toDouble(),
-                      AppTheme.error.withOpacity(0.7)),
+                      AppTheme.error.withValues(alpha: 0.7)),
                   BarChartRodStackItem(d.fakeCount.toDouble(),
                       d.total.toDouble(),
-                      AppTheme.success.withOpacity(0.7)),
+                      AppTheme.success.withValues(alpha: 0.7)),
                 ] : [],
               ),
             ]);
@@ -491,7 +491,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       decoration: BoxDecoration(
         color:        AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border:       Border.all(color: color.withOpacity(0.2)),
+        border:       Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(icon, color: color, size: 20),
@@ -508,7 +508,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value:           value / 100,
-            backgroundColor: color.withOpacity(0.12),
+            backgroundColor: color.withValues(alpha: 0.12),
             valueColor:      AlwaysStoppedAnimation<Color>(color),
             minHeight:       6,
           ),
@@ -565,7 +565,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
                     color:  color,
                     shape:  BoxShape.circle,
                     boxShadow: isLast ? [
-                      BoxShadow(color: color.withOpacity(0.5),
+                      BoxShadow(color: color.withValues(alpha: 0.5),
                           blurRadius: 8, spreadRadius: 2),
                     ] : [],
                   ),

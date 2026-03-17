@@ -1,6 +1,4 @@
-/// local_detection_service.dart
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'detection_service.dart';
 import 'on_device_face_detector.dart';

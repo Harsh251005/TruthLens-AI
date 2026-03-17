@@ -167,11 +167,11 @@ class _BadgesScreenState extends State<BadgesScreen>
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
         border: Border.all(
           color: isOnStreak
-              ? AppTheme.accent.withOpacity(0.4)
+              ? AppTheme.accent.withValues(alpha: 0.4)
               : AppTheme.surfaceBorder,
         ),
         boxShadow: isOnStreak ? [
-          BoxShadow(color: AppTheme.accent.withOpacity(0.15),
+          BoxShadow(color: AppTheme.accent.withValues(alpha: 0.15),
               blurRadius: 20, spreadRadius: 2),
         ] : [],
       ),
@@ -181,16 +181,16 @@ class _BadgesScreenState extends State<BadgesScreen>
           width: 64, height: 64,
           decoration: BoxDecoration(
             color:  isOnStreak
-                ? AppTheme.accent.withOpacity(0.15)
+                ? AppTheme.accent.withValues(alpha: 0.15)
                 : AppTheme.surface2,
             shape:  BoxShape.circle,
             border: Border.all(
               color: isOnStreak
-                  ? AppTheme.accent.withOpacity(0.4)
+                  ? AppTheme.accent.withValues(alpha: 0.4)
                   : AppTheme.surfaceBorder,
             ),
             boxShadow: isOnStreak ? [
-              BoxShadow(color: AppTheme.accent.withOpacity(0.3),
+              BoxShadow(color: AppTheme.accent.withValues(alpha: 0.3),
                   blurRadius: 16, spreadRadius: 2),
             ] : [],
           ),
@@ -260,7 +260,7 @@ class _BadgesScreenState extends State<BadgesScreen>
         borderRadius: BorderRadius.circular(4),
         child: LinearProgressIndicator(
           value:           progress,
-          backgroundColor: AppTheme.accent.withOpacity(0.12),
+          backgroundColor: AppTheme.accent.withValues(alpha: 0.12),
           valueColor:      const AlwaysStoppedAnimation<Color>(AppTheme.accent),
           minHeight:       5,
         ),
@@ -304,7 +304,7 @@ class _BadgesScreenState extends State<BadgesScreen>
           borderRadius: BorderRadius.circular(6),
           child: LinearProgressIndicator(
             value:           pct,
-            backgroundColor: AppTheme.primary.withOpacity(0.12),
+            backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
             valueColor:      const AlwaysStoppedAnimation<Color>(AppTheme.primary),
             minHeight:       10,
           ),
@@ -365,12 +365,12 @@ class _BadgesScreenState extends State<BadgesScreen>
       padding:  const EdgeInsets.all(AppTheme.paddingL),
       decoration: BoxDecoration(
         color: badge.earned
-            ? color.withOpacity(0.06)
+            ? color.withValues(alpha: 0.06)
             : AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
         border: Border.all(
           color: badge.earned
-              ? color.withOpacity(0.3)
+              ? color.withValues(alpha: 0.3)
               : AppTheme.surfaceBorder,
         ),
       ),
@@ -380,12 +380,12 @@ class _BadgesScreenState extends State<BadgesScreen>
           width: 52, height: 52,
           decoration: BoxDecoration(
             color:  badge.earned
-                ? color.withOpacity(0.12)
+                ? color.withValues(alpha: 0.12)
                 : AppTheme.surface2,
             shape:  BoxShape.circle,
             border: Border.all(
               color: badge.earned
-                  ? color.withOpacity(0.3)
+                  ? color.withValues(alpha: 0.3)
                   : AppTheme.surfaceBorder,
             ),
           ),
@@ -434,9 +434,9 @@ class _BadgesScreenState extends State<BadgesScreen>
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value:           badge.progressFraction,
-                      backgroundColor: color.withOpacity(0.1),
+                      backgroundColor: color.withValues(alpha: 0.4),
                       valueColor:      AlwaysStoppedAnimation<Color>(
-                          badge.earned ? color : AppTheme.textSecondary.withOpacity(0.3)),
+                          badge.earned ? color : AppTheme.textSecondary.withValues(alpha: 0.3)),
                       minHeight:       5,
                     ),
                   ),

@@ -54,7 +54,7 @@ class AvatarWidget extends StatelessWidget {
           gradient: AppTheme.primaryGradient,
           boxShadow: [
             BoxShadow(
-              color:       AppTheme.primary.withOpacity(0.4),
+              color:       AppTheme.primary.withValues(alpha: 0.4),
               blurRadius:  24,
               spreadRadius: 4,
             ),
@@ -116,8 +116,8 @@ class AvatarWidget extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: avatar.color.withOpacity(0.25),
-        border: Border.all(color: avatar.color.withOpacity(0.5), width: 1.5),
+        color: avatar.color.withValues(alpha: 0.25),
+        border: Border.all(color: avatar.color.withValues(alpha: 0.5), width: 1.5),
       ),
       child: Center(
         child: Text(
@@ -142,7 +142,7 @@ class AvatarWidget extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(
-            color: AppTheme.primary.withOpacity(0.4),
+            color: AppTheme.primary.withValues(alpha: 0.4),
             width: 1.5,
           ),
         ),
@@ -153,7 +153,7 @@ class AvatarWidget extends StatelessWidget {
             height: size,
             fit:    BoxFit.cover,
             // If bytes are corrupted fall back to a letter
-            errorBuilder: (_, __, ___) => _buildInitialAvatar(),
+            errorBuilder: (_, _, _) => _buildInitialAvatar(),
           ),
         ),
       );

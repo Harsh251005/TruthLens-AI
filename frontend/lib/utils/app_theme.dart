@@ -70,7 +70,7 @@ class AppTheme {
     ),
     boxShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.3),
+        color: Colors.black.withValues(alpha: 0.3),
         blurRadius: 16,
         offset: const Offset(0, 4),
       ),
@@ -81,10 +81,10 @@ class AppTheme {
   static BoxDecoration glowDecoration(Color glowColor) => BoxDecoration(
     color: surface,
     borderRadius: BorderRadius.circular(radiusL),
-    border: Border.all(color: glowColor.withOpacity(0.4), width: 1.5),
+    border: Border.all(color: glowColor.withValues(alpha: 0.4), width: 1.5),
     boxShadow: [
       BoxShadow(
-        color: glowColor.withOpacity(0.15),
+        color: glowColor.withValues(alpha: 0.15),
         blurRadius: 24,
         spreadRadius: 2,
         offset: const Offset(0, 4),

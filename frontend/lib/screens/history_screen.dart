@@ -189,7 +189,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.history_rounded,
@@ -239,9 +239,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.paddingM, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.08),
+        color: AppTheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -275,9 +275,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: AppTheme.paddingL),
         decoration: BoxDecoration(
-          color: AppTheme.error.withOpacity(0.15),
+          color: AppTheme.error.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(AppTheme.radiusM),
-          border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.error.withValues(alpha: 0.3)),
         ),
         child: const Column(
           mainAxisSize: MainAxisSize.min,
@@ -310,13 +310,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.paddingL),
         decoration: AppTheme.cardDecoration(
-            borderColor: color.withOpacity(0.2)),
+            borderColor: color.withValues(alpha: 0.2)),
         child: Row(
           children: [
             Container(
               width: 48, height: 48,
               decoration: BoxDecoration(
-                  color: color.withOpacity(0.1), shape: BoxShape.circle),
+                  color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 14),
@@ -340,9 +340,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withOpacity(0.3)),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
                   child: Text(scan.verdict, style: TextStyle(
                       color: color, fontWeight: FontWeight.w700,
@@ -415,15 +415,15 @@ class _ScanDetailSheet extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(AppTheme.paddingL),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
             child: Row(children: [
               Container(
                 width: 52, height: 52,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 28),
@@ -480,7 +480,7 @@ class _ScanDetailSheet extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value:           scan.confidence / 100,
-                  backgroundColor: color.withOpacity(0.15),
+                  backgroundColor: color.withValues(alpha: 0.15),
                   valueColor:      AlwaysStoppedAnimation<Color>(color),
                   minHeight:       8,
                 ),
