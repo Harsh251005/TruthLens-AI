@@ -7,6 +7,7 @@
 
 import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
+import 'deepfake_news_screen.dart';
 
 class AwarenessScreen extends StatefulWidget {
   const AwarenessScreen({super.key});
@@ -604,6 +605,41 @@ class _AwarenessScreenState extends State<AwarenessScreen>
           ]),
         ),
 
+        // Live news button
+        GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const DeepfakeNewsScreen()),
+          ),
+          child: Container(
+            width:   double.infinity,
+            padding: const EdgeInsets.all(AppTheme.paddingL),
+            decoration: BoxDecoration(
+              color:        const Color(0xFF1565C0).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(AppTheme.radiusL),
+              border: Border.all(
+                  color: const Color(0xFF1565C0).withOpacity(0.3)),
+            ),
+            child: const Row(children: [
+              Icon(Icons.newspaper_rounded,
+                  color: Color(0xFF1565C0), size: 22),
+              SizedBox(width: 14),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Live News Tracker',
+                      style: TextStyle(fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary)),
+                  Text('Latest deepfake incidents worldwide',
+                      style: TextStyle(fontSize: 12,
+                          color: AppTheme.textSecondary)),
+                ],
+              )),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: AppTheme.textSecondary, size: 14),
+            ]),
+          ),
+        ),
         const SizedBox(height: 16),
       ],
     );

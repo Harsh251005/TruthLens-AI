@@ -788,6 +788,11 @@ class _ProfileScreenState extends State<ProfileScreen>
           Text(_userEmail, style: const TextStyle(fontSize: 14,
               color: AppTheme.textSecondary)),
 
+          const SizedBox(height: 10),
+
+// ── Earned badges strip ───────────────────────────────────
+          _buildEarnedBadgesStrip(),
+
           const SizedBox(height: 24),
 
           // ── Stats bar ────────────────────────────────────────
@@ -1279,6 +1284,56 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(width: 8),
         Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 13))),
       ]),
+    );
+  }
+
+  Widget _buildEarnedBadgesStrip() {
+    // Load badges from stats — we'll use a FutureBuilder
+    return FutureBuilder<BadgesData?>(
+      future: _detectionService.getBadges(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+        final earned = snapshot.data!.badges
+            .where((b) => b.earned)
+            .toList();
+
+        if (earned.isEmpty) {
+          return const Text('No badges yet — start scanning!',
+              style: TextStyle(fontSize: 12,
+                  color: AppTheme.textSecondary));
+        }
+
+        return Column(children: [
+          // Badge emoji row
+          Wrap(
+            spacing:   6,
+            runSpacing: 6,
+            alignment: WrapAlignment.center,
+            children: earned.map((b) => Tooltip(
+              message: b.name,
+              child: Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color:  AppTheme.surface2,
+                  shape:  BoxShape.circle,
+                  border: Border.all(
+                      color: AppTheme.surfaceBorder),
+                ),
+                child: Center(
+                  child: Text(b.emoji,
+                      style: const TextStyle(fontSize: 18)),
+                ),
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 6),
+          Text('${earned.length} badge${earned.length == 1 ? '' : 's'} earned',
+              style: const TextStyle(fontSize: 11,
+                  color: AppTheme.textSecondary)),
+        ]);
+      },
     );
   }
 }

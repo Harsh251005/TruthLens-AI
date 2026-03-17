@@ -51,4 +51,14 @@ class AppConstants {
   // ── Validation ────────────────────────────────────────────────
   static const int minPasswordLength = 6;
   static const int maxNameLength     = 100;
+
+  // ── NewsAPI ───────────────────────────────────────────────────────
+  static const String newsApiKey      = '007e398a4c0b4630b6bbd24bfddb21d1';
+  static const String newsApiEndpoint =
+      'https://newsapi.org/v2/everything?'
+      'q=deepfake+OR+"deep+fake"+OR+"synthetic+media"'
+      '&language=en'
+      '&sortBy=publishedAt'
+      '&pageSize=20'
+      '&apiKey=${newsApiKey}';
 }

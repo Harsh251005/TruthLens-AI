@@ -25,6 +25,8 @@ dependencies:
   flutter_local_notifications: ^18.0.0
   timezone: ^0.9.4
   workmanager: ^0.9.0+3
+  url_launcher: ^6.3.0
+  camera: ^0.11.0
 
 dev_dependencies:
   flutter_test:

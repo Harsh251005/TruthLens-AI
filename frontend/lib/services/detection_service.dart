@@ -19,6 +19,7 @@ import 'package:http_parser/http_parser.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
 import 'notification_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 // ── EXIF Analysis Model ───────────────────────────────────────────
@@ -657,25 +658,35 @@ class DetectionService {
   }
 
 
-  // ── Check badge progress + trigger notification ───────────────
-  // Called after every successful scan.
-  // Fires a notification if user is 1–2 steps from a badge.
+  // ── Notify only when a badge is NEWLY earned ─────────────
+// Uses SharedPreferences to track which badges have already
+// been notified — ensures each badge notification fires once.
   Future<void> checkBadgeProgress() async {
     try {
       final data = await getBadges();
       if (data == null) return;
 
+      final prefs       = await SharedPreferences.getInstance();
+      const notifiedKey = 'notified_badges'; // comma-separated list of badge IDs
+
+      // Get previously notified badge IDs
+      final notified = (prefs.getString(notifiedKey) ?? '').split(',').toSet();
+
       for (final badge in data.badges) {
-        if (!badge.earned) {
-          final stepsLeft = badge.target - badge.progress;
-          if (stepsLeft <= 2 && stepsLeft > 0) {
-            await NotificationService().showBadgeProgressNotification(
-              badgeName:  badge.name,
-              badgeEmoji: badge.emoji,
-              stepsLeft:  stepsLeft,
-            );
-            break; // Only one notification at a time
-          }
+        // Only notify if:
+        // 1. Badge is earned
+        // 2. We haven't notified for this badge before
+        if (badge.earned && !notified.contains(badge.id)) {
+          await NotificationService().showBadgeProgressNotification(
+            badgeName:  badge.name,
+            badgeEmoji: badge.emoji,
+            stepsLeft:  0,
+          );
+
+          // Mark as notified so it never fires again
+          notified.add(badge.id);
+          await prefs.setString(notifiedKey, notified.join(','));
+          break; // One notification per scan max
         }
       }
     } catch (_) {}

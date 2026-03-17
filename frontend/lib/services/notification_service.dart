@@ -162,23 +162,55 @@ class NotificationService {
     final enabled = await isBadgeNotifEnabled();
     if (!enabled) return;
 
-    final body = stepsLeft == 1
-        ? 'Just 1 more scan to unlock the $badgeName badge! $badgeEmoji'
+    // stepsLeft == 0 means badge was just earned
+    final title = stepsLeft == 0
+        ? '🏆 Badge Unlocked!'
+        : '🏆 Badge almost unlocked!';
+
+    final body = stepsLeft == 0
+        ? 'You just earned the $badgeName badge! $badgeEmoji Keep it up!'
         : '$stepsLeft more scans to unlock the $badgeName badge! $badgeEmoji';
 
     await _plugin.show(
       _badgeNotifId,
-      '🏆 Badge almost unlocked!',
+      title,
       body,
       NotificationDetails(
         android: AndroidNotificationDetails(
           _channel.id,
           _channel.name,
           channelDescription: _channel.description,
-          importance:  Importance.defaultImportance,
-          priority:    Priority.defaultPriority,
+          importance:  Importance.high,
+          priority:    Priority.high,
           icon:        '@mipmap/ic_launcher',
           color:       const Color(0xFFF5A623),
+        ),
+      ),
+    );
+  }
+
+  // ── Batch scan complete notification ──────────────────────────
+  static const int _batchNotifId = 1003;
+
+  Future<void> showBatchCompleteNotification({
+    required int total,
+    required int realCount,
+    required int fakeCount,
+  }) async {
+    await _plugin.show(
+      _batchNotifId,
+      '✅ Batch Scan Complete!',
+      'Scanned $total images — $realCount Authentic, '
+          '$fakeCount Deepfake${fakeCount > 0 ? ' ⚠️' : ''}',
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channel.id,
+          _channel.name,
+          channelDescription: _channel.description,
+          importance:  Importance.high,
+          priority:    Priority.high,
+          icon:        '@mipmap/ic_launcher',
+          color:       const Color(0xFF4F8EF7),
         ),
       ),
     );
