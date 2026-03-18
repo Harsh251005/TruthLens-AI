@@ -118,12 +118,6 @@ def analyze_exif(image_bytes: bytes) -> dict:
                     "Timestamps inconsistent — modified long after capture"
                 )
 
-        # ── 4. No GPS on a phone photo ────────────────────────────
-        if "GPS" not in exif:
-            suspicion_flags.append(
-                "No GPS data — most real smartphone photos contain location"
-            )
-
         # ── 5. Calculate risk level ───────────────────────────────
         risk_level = _calculate_risk(suspicion_flags, exif)
 
@@ -288,53 +282,35 @@ def _format_field(tag_name: str, value) -> dict | None:
 
     # ── Field label mapping ────────────────────────────────────────
     label_map = {
-        "Make":                  "Camera Make",
-        "Model":                 "Camera Model",
-        "Software":              "Software",
-        "DateTime":              "Date Modified",
-        "DateTimeOriginal":      "Date Taken",
-        "DateTimeDigitized":     "Date Digitized",
-        "ImageWidth":            "Image Width",
-        "ImageLength":           "Image Height",
-        "ExifImageWidth":        "Image Width",
-        "ExifImageHeight":       "Image Height",
-        "XResolution":           "X Resolution",
-        "YResolution":           "Y Resolution",
-        "ResolutionUnit":        "Resolution Unit",
-        "Orientation":           "Orientation",
-        "ColorSpace":            "Color Space",
-        "ExposureTime":          "Exposure Time",
-        "FNumber":               "F-Number",
-        "ISOSpeedRatings":       "ISO Speed",
-        "ShutterSpeedValue":     "Shutter Speed",
-        "ApertureValue":         "Aperture",
-        "BrightnessValue":       "Brightness",
-        "ExposureBiasValue":     "Exposure Bias",
-        "MaxApertureValue":      "Max Aperture",
-        "MeteringMode":          "Metering Mode",
-        "Flash":                 "Flash",
-        "FocalLength":           "Focal Length",
-        "FocalLengthIn35mmFilm": "Focal Length (35mm)",
-        "WhiteBalance":          "White Balance",
-        "DigitalZoomRatio":      "Digital Zoom",
-        "ExposureMode":          "Exposure Mode",
-        "ExposureProgram":       "Exposure Program",
-        "SensingMethod":         "Sensing Method",
-        "SceneCaptureType":      "Scene Type",
-        "GainControl":           "Gain Control",
-        "Contrast":              "Contrast",
-        "Saturation":            "Saturation",
-        "Sharpness":             "Sharpness",
-        "LightSource":           "Light Source",
-        "Artist":                "Artist/Author",
-        "Copyright":             "Copyright",
-        "ImageDescription":      "Description",
-        "LensModel":             "Lens Model",
-        "LensMake":              "Lens Make",
-        "BodySerialNumber":      "Camera Serial",
-        "LensSerialNumber":      "Lens Serial",
-        "SubjectDistance":       "Subject Distance",
-        "SubjectDistanceRange":  "Subject Distance Range",
+        # ── Camera identity ────────────────────────────────────────
+        "Make": "Camera Make",
+        "Model": "Camera Model",
+        "LensModel": "Lens Model",
+
+        # ── Software (most important for detecting AI/editing) ─────
+        "Software": "Software",
+
+        # ── Timestamps ─────────────────────────────────────────────
+        "DateTime": "Date Modified",
+        "DateTimeOriginal": "Date Taken",
+
+        # ── Basic image properties ─────────────────────────────────
+        "ImageWidth": "Width",
+        "ImageLength": "Height",
+        "ExifImageWidth": "Width",
+        "ExifImageHeight": "Height",
+
+        # ── Camera settings (useful for authenticity check) ────────
+        "ExposureTime": "Exposure Time",
+        "FNumber": "F-Number",
+        "ISOSpeedRatings": "ISO Speed",
+        "Flash": "Flash",
+        "FocalLength": "Focal Length",
+        "WhiteBalance": "White Balance",
+
+        # ── Author / copyright ─────────────────────────────────────
+        "Artist": "Artist",
+        "Copyright": "Copyright",
     }
 
     label = label_map.get(tag_name, tag_name)
@@ -431,20 +407,30 @@ def _timestamp_gap_seconds(ts1: str, ts2: str) -> float | None:
 
 
 def _calculate_risk(suspicion_flags: list, exif: dict) -> str:
-    """Calculates overall EXIF risk level based on suspicious findings."""
-    count = len(suspicion_flags)
-    if count == 0:
-        return "LOW"
-    elif count == 1:
-        return "MEDIUM" if "No EXIF" in suspicion_flags[0] else "LOW"
-    elif count == 2:
+    """
+    Risk is only meaningful when there are genuine red flags.
+    Missing GPS or camera model alone is not suspicious.
+    """
+    # Check for genuinely suspicious flags only
+    critical_flags = [
+        f for f in suspicion_flags
+        if any(word in f.lower() for word in [
+            "software", "edited", "ai", "deepfake",
+            "manipulated", "inconsistent", "mismatch"
+        ])
+    ]
+
+    if len(critical_flags) >= 2:
+        return "HIGH"
+    elif len(critical_flags) == 1:
+        return "MEDIUM"
+    elif len(suspicion_flags) >= 3:
         return "MEDIUM"
     else:
-        return "HIGH"
+        return "LOW"
 
 
 def _build_summary(exif: dict, flags: list, risk: str) -> str:
-    """Builds a concise summary paragraph for the LLM prompt."""
     parts = []
 
     camera = exif.get("Camera Make", "") or exif.get("Camera Model", "")
@@ -459,14 +445,11 @@ def _build_summary(exif: dict, flags: list, risk: str) -> str:
     if date:
         parts.append(f"taken on {date}")
 
-    if "GPS Latitude" in exif:
-        parts.append("contains GPS location data")
-
-    base = ("The image " + ", ".join(parts) + ".") if parts \
-           else "Limited EXIF data was found."
+    base = ("Image " + ", ".join(parts) + ".") if parts \
+           else "No significant metadata found."
 
     if flags:
-        base += " Suspicious indicators: " + "; ".join(flags) + "."
+        base += " Flags: " + "; ".join(flags[:2]) + "."
 
-    base += f" Overall EXIF risk level: {risk}."
+    base += f" EXIF risk: {risk}."
     return base

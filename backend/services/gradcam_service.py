@@ -48,6 +48,13 @@ def _get_keras_model():
 
 
 def generate_gradcam(image_bytes: bytes) -> str:
+    import traceback
+    try:
+        model = _get_keras_model()
+        # ... rest of function
+    except Exception as e:
+        print(f"GRADCAM ERROR: {traceback.format_exc()}")
+        raise
     """
     Generates a Grad-CAM heatmap for the given face image.
 

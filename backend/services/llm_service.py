@@ -77,13 +77,12 @@ def _build_prompt(
     exif_risk: str,
 ) -> str:
 
-    # Translate raw score into plain language signal
     if raw_score > 0.92:
         signal = "almost certainly manipulated"
     elif raw_score > 0.78:
         signal = "clearly shows signs of manipulation"
     elif raw_score > 0.62:
-        signal = "has some suspicious patterns worth noting"
+        signal = "has some suspicious patterns"
     elif raw_score > 0.50:
         signal = "is borderline — slightly leans toward being fake"
     elif raw_score > 0.35:
@@ -91,26 +90,26 @@ def _build_prompt(
     elif raw_score > 0.18:
         signal = "looks mostly authentic"
     else:
-        signal = "looks very authentic with no obvious manipulation signs"
+        signal = "looks very authentic"
 
-    # Build EXIF context naturally
+    # ── Only mention EXIF if it's genuinely HIGH risk ──────────────
+    # Never mention missing EXIF — that's normal for most images
     exif_context = ""
-    if exif_flags and exif_risk in ("HIGH", "MEDIUM"):
+    if exif_risk == "HIGH" and exif_flags:
         exif_context = (
-            f"The metadata also raised some flags: "
-            f"{'; '.join(exif_flags[:2])}."
+            f"The metadata also raised a flag: {exif_flags[0]}. "
         )
-    elif exif_risk == "LOW":
-        exif_context = "The metadata looks consistent with a genuine photo."
 
     return (
         f"This face photo {signal}. "
-        f"The confidence is {confidence:.1f}%. "
-        f"{exif_context} "
-        f"In 2-3 short plain sentences, tell the user what this means "
-        f"and what they should do — no formatting, no lists, just talk."
+        f"Confidence is {confidence:.1f}%. "
+        f"{exif_context}"
+        f"In 2-3 short plain sentences, explain what this means "
+        f"for this specific confidence level. "
+        f"Focus on what the visual analysis found — never mention "
+        f"missing metadata, camera info, or GPS data. "
+        f"Sound like a person, not a report."
     )
-
 
 def _fallback_explanation(verdict: str, confidence: float) -> str:
     """
