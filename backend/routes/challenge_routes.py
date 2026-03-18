@@ -167,7 +167,7 @@ def save_score(
 @router.get("/leaderboard", response_model=LeaderboardResponse)
 def get_leaderboard(
     user_id: int = Depends(get_current_user),
-    period:  str = "alltime",   # "alltime" or "weekly"
+    period:  str = "all-time",
 ):
     """
     Returns:
@@ -186,26 +186,28 @@ def get_leaderboard(
             date_filter = "AND cs.played_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
 
         # ── Top 20 — best score per user ──────────────────────
+        # AFTER — one row per user, picks their best score row:
         cursor.execute(f"""
             SELECT
-                u.id                    AS user_id,
-                u.name                  AS name,
-                u.avatar_type           AS avatar_type,
-                u.avatar_data           AS avatar_data,
-                MAX(cs.score)           AS score,
-                cs.total                AS total,
-                cs.accuracy             AS accuracy,
-                cs.max_combo            AS max_combo,
-                cs.grade                AS grade,
-                cs.played_at            AS played_at
+                u.id            AS user_id,
+                u.name          AS name,
+                u.avatar_type   AS avatar_type,
+                u.avatar_data   AS avatar_data,
+                cs.score        AS score,
+                cs.total        AS total,
+                cs.accuracy     AS accuracy,
+                cs.max_combo    AS max_combo,
+                cs.grade        AS grade,
+                cs.played_at    AS played_at
             FROM challenge_scores cs
             JOIN users u ON cs.user_id = u.id
-            WHERE 1=1 {date_filter}
-            GROUP BY u.id, u.name, u.avatar_type,
-                     u.avatar_data, cs.total,
-                     cs.accuracy, cs.max_combo,
-                     cs.grade, cs.played_at
-            ORDER BY score DESC, cs.accuracy DESC
+            WHERE cs.id = (
+                SELECT id FROM challenge_scores cs2
+                WHERE cs2.user_id = u.id
+                {date_filter.replace('cs.', 'cs2.')}
+                ORDER BY score DESC LIMIT 1
+            )
+            ORDER BY cs.score DESC, cs.accuracy DESC
             LIMIT 20
         """)
         top_rows = cursor.fetchall()

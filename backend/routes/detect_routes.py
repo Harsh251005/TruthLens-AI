@@ -34,7 +34,6 @@ async def detect(
     Accepts an image, runs full deepfake analysis pipeline.
     Also updates the user's scan streak after every successful scan.
     """
-    from datetime import datetime, timedelta, date as date_type
 
     # Validate file type
     if file.content_type not in ALLOWED_TYPES:
@@ -87,7 +86,8 @@ async def detect(
             elif last_date == today:
                 # Already scanned today — streak unchanged
                 new_streak = streak
-            elif last_date == today - __import__('datetime').timedelta(days=1):
+                # CORRECT:
+            elif last_date == today - timedelta(days=1):
                 # Scanned yesterday — extend streak
                 new_streak = streak + 1
             else:
@@ -261,8 +261,6 @@ def get_analytics(user_id: int = Depends(get_current_user)):
     Returns rich analytics data for the dashboard screen.
     Computes everything from the existing scans table — no new DB columns.
     """
-    from datetime import datetime, timedelta
-    from models.schemas import AnalyticsResponse, DailyActivity
 
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)

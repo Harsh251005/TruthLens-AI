@@ -56,6 +56,11 @@ def delete_account(
             (user_id,)
         )
 
+        cursor.execute(
+            "DELETE FROM earned_badges WHERE user_id = %s",
+            (user_id,)
+        )
+
         # Delete scan history
         cursor.execute(
             "DELETE FROM scans WHERE user_id = %s",
@@ -117,6 +122,11 @@ def reset_account(user_id: int = Depends(get_current_user)):
             (user_id,)
         )
 
+        cursor.execute(
+            "DELETE FROM earned_badges WHERE user_id = %s",
+            (user_id,)
+        )
+
         # 3. Delete unused reset tokens
         cursor.execute(
             "DELETE FROM reset_tokens WHERE user_id = %s AND used = FALSE",
@@ -130,6 +140,7 @@ def reset_account(user_id: int = Depends(get_current_user)):
         cursor.execute(
             """UPDATE users SET
                current_streak  = 0,
+               longest_streak  = 0,
                last_scan_date  = NULL,
                avatar_type     = 'initial',
                avatar_data     = NULL
