@@ -25,7 +25,6 @@ dependencies:
   google_mlkit_face_detection: ^0.11.0
   image: ^4.1.7
   screenshot: ^3.0.0
-  tflite_flutter: ^0.11.0
 
   # Device & Platform Integration
   image_picker: ^1.1.2

@@ -1,7 +1,7 @@
 // screens/home_screen.dart
 // ============================================================
 // Home/Dashboard — redesigned for professional look.
-// VeriNet branding added to scan card.
+// Axiom branding added to scan card.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -212,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                 ),
                 const SizedBox(width: 6),
-                const Text('VeriNet v1.0 is ready',
+                const Text('Axiom v1.0 is ready',
                     style: TextStyle(fontSize: 12,
                         color: AppTheme.textSecondary)),
               ]),
@@ -321,7 +321,7 @@ class _HomeScreenState extends State<HomeScreen>
                   Text(
                     total == 0
                         ? 'No scans yet — start below!'
-                        : 'image${total == 1 ? '' : 's'} analysed by VeriNet',
+                        : 'image${total == 1 ? '' : 's'} analysed by Axiom',
                     style: const TextStyle(fontSize: 13,
                         color: AppTheme.textSecondary),
                   ),
@@ -421,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
 
-  // ── Scan card with VeriNet branding ───────────────────────────
+  // ── Scan card with Axiom branding ───────────────────────────
   Widget _buildScanCard(BuildContext context) {
     return Container(
       width:   double.infinity,
@@ -444,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Column(children: [
 
-        // ── VeriNet badge ─────────────────────────────────────
+        // ── Axiom badge ─────────────────────────────────────
         Container(
           padding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 5),
@@ -468,7 +468,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(width: 6),
-            const Text('Powered by VeriNet v1.0',
+            const Text('Powered by Axiom v1.0',
                 style: TextStyle(fontSize: 11,
                     color: AppTheme.primary,
                     fontWeight: FontWeight.w600,
@@ -513,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen>
         const SizedBox(height: 8),
 
         const Text(
-          'Upload any face photo and VeriNet will\ninstantly detect if it\'s real or AI-generated.',
+          'Upload any face photo and Axiom will\ninstantly detect if it\'s real or AI-generated.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13,
               color: AppTheme.textSecondary, height: 1.6),
@@ -723,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen>
       (Icons.upload_rounded,     AppTheme.primary, '01',
       'Upload', 'Select a clear front-facing photo'),
       (Icons.memory_rounded,     AppTheme.accent,  '02',
-      'VeriNet Analyses', 'AI scans for deepfake artifacts'),
+      'Axiom Analyses', 'AI scans for deepfake artifacts'),
       (Icons.verified_rounded,   AppTheme.success, '03',
       'Get Verdict', 'Confidence score + full breakdown'),
     ];

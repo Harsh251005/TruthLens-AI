@@ -182,8 +182,8 @@ class AboutScreen extends StatelessWidget {
   Widget _buildTechnology() {
     final techs = [
       // AFTER:
-      (Icons.memory_rounded, AppTheme.primary, 'VeriNet v1.0 (EfficientNetB0)',
-      'Proprietary deep learning model fine-tuned for deepfake detection. Trained on 140K+ real and synthetic face images.'),
+      (Icons.memory_rounded, AppTheme.primary, 'Axiom v1.0 (EfficientNetB0)',
+      'Axiom is TruthLens AI\'s proprietary detection model, fine-tuned for deepfake detection. Trained on 140K+ real and synthetic face images.'),
       (Icons.face_retouching_natural_rounded, AppTheme.accent, 'OpenCV Face Detection',
       'Haar Cascade classifier ensures only valid face images are analysed.'),
       (Icons.cloud_rounded,         AppTheme.success, 'FastAPI Backend',
@@ -319,7 +319,7 @@ class AboutScreen extends StatelessWidget {
               border: Border.all(
                   color: AppTheme.primary.withValues(alpha: 0.2)),
             ),
-            child: const Text('Powered by VeriNet v1.0',
+            child: const Text('Powered by Axiom v1.0',
                 style: TextStyle(fontSize: 12, color: AppTheme.primary,
                     fontWeight: FontWeight.w600)),
           ),

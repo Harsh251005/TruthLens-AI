@@ -48,18 +48,45 @@ def analyze_exif(image_bytes: bytes) -> dict:
         img  = Image.open(io.BytesIO(image_bytes))
         exif = _extract_all_exif(img)
 
+        # AFTER:
         if not exif:
-            return {
-                "raw_fields":      {},
-                "suspicion_flags": [
-                    "No EXIF metadata found — common in AI-generated images"
-                ],
-                "risk_level": "MEDIUM",
-                "summary":    "Image contains no EXIF metadata, which is "
-                              "suspicious. Authentic photos taken with real "
-                              "cameras almost always contain EXIF data.",
-                "has_exif":   False,
-            }
+            # ── Detect likely image source ─────────────────────────────
+            # PNG or RGBA = almost certainly a screenshot or web image
+            # These never have EXIF — treat differently from a stripped JPEG
+            img_format = img.format  # JPEG, PNG, WEBP etc
+            img_mode = img.mode  # RGB, RGBA etc
+            is_likely_screenshot = (
+                    img_format == "PNG" or
+                    img_mode == "RGBA"
+            )
+
+            if is_likely_screenshot:
+                return {
+                    "raw_fields": {},
+                    "suspicion_flags": [],
+                    "risk_level": "LOW",
+                    "summary": (
+                        "This appears to be a screenshot or web image. "
+                        "These don't contain camera metadata, which is completely normal. "
+                        "EXIF analysis is not applicable here."
+                    ),
+                    "has_exif": False,
+                }
+            else:
+                # JPEG with no EXIF — more genuinely worth flagging
+                return {
+                    "raw_fields": {},
+                    "suspicion_flags": [
+                        "No camera metadata found — unusual for a real JPEG photo"
+                    ],
+                    "risk_level": "MEDIUM",
+                    "summary": (
+                        "This JPEG has no camera metadata, which is unusual for a "
+                        "photo taken on a phone or camera. It may have been "
+                        "downloaded, heavily edited, or AI-generated."
+                    ),
+                    "has_exif": False,
+                }
 
         suspicion_flags = []
 

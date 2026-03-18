@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
-import 'services/local_detection_service.dart';
 import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await LocalDetectionService().initialize();
   try {
     await NotificationService().init();
     await NotificationService().scheduleStreakReminder();

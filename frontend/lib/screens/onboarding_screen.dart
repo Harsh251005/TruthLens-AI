@@ -39,7 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon:     Icons.document_scanner_rounded,
       color:    AppTheme.accent,
       title:    'Upload Any Face Photo',
-      subtitle: 'Simply pick a photo from your gallery or take one with your camera. Our AI does the rest.',
+      subtitle: 'Simply pick a photo from your gallery or take one with your camera. Axiom does the rest.',
       gradient: LinearGradient(
         colors: [Color(0xFF2B1F0A), Color(0xFF0A0E1A)],
         begin: Alignment.topCenter,

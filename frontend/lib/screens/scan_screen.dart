@@ -1,12 +1,11 @@
 // screens/scan_screen.dart
 // ============================================================
-// Scan screen — redesigned with VeriNet branding.
+// Scan screen — redesigned with Axiom branding.
 // ============================================================
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/hybrid_detection_service.dart';
 import '../utils/app_theme.dart';
 import '../widgets/scanning_overlay.dart';
 import 'result_screen.dart';
@@ -28,7 +27,7 @@ class _ScanScreenState extends State<ScanScreen>
   String? _errorMessage;
 
   final _imagePicker            = ImagePicker();
-  final _hybridDetectionService = HybridDetectionService();
+  final _detectionService = DetectionService();
 
   // ── Scanning progress animation ───────────────────────────────
   late AnimationController _scanAnim;
@@ -79,8 +78,7 @@ class _ScanScreenState extends State<ScanScreen>
     setState(() { _isScanning = true; _errorMessage = null; });
     _scanAnim.repeat();
 
-    final response =
-    await _hybridDetectionService.detect(_selectedImage!);
+    final response = await _detectionService.detectImage(_selectedImage!);
 
     _scanAnim.stop();
     _scanAnim.reset();
@@ -132,7 +130,7 @@ class _ScanScreenState extends State<ScanScreen>
               border: Border.all(
                   color: AppTheme.primary.withValues(alpha: 0.25)),
             ),
-            child: const Text('VeriNet',
+            child: const Text('Axiom',
                 style: TextStyle(fontSize: 10,
                     color: AppTheme.primary,
                     fontWeight: FontWeight.w700,
@@ -401,7 +399,7 @@ class _ScanScreenState extends State<ScanScreen>
                 child: CircularProgressIndicator(
                     strokeWidth: 2.5, color: Colors.white)),
             SizedBox(width: 12),
-            Text('VeriNet is analysing...',
+            Text('Axiom is analysing...',
                 style: TextStyle(fontSize: 15,
                     fontWeight: FontWeight.w600)),
           ],
@@ -411,7 +409,7 @@ class _ScanScreenState extends State<ScanScreen>
           children: [
             const Icon(Icons.search_rounded, size: 20),
             const SizedBox(width: 8),
-            const Text('Analyse with VeriNet',
+            const Text('Analyse with Axiom',
                 style: TextStyle(fontSize: 15,
                     fontWeight: FontWeight.w700)),
           ],
@@ -425,7 +423,7 @@ class _ScanScreenState extends State<ScanScreen>
   Widget _buildScanningStatus() {
     final steps = [
       'Detecting face in image...',
-      'Running VeriNet analysis...',
+      'Running Axiom analysis...',
       'Checking EXIF metadata...',
       'Generating AI explanation...',
     ];

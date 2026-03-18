@@ -122,7 +122,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: SlideTransition(position: _slideAnim, child: child),
                 ),
                 child: const Text(
-                  'Deepfake Detection Powered by AI',
+                  'Deepfake Detection Powered by Axiom',
                   style: TextStyle(fontSize: 14,
                       color: AppTheme.textSecondary, letterSpacing: 0.5),
                 ),

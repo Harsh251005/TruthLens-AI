@@ -1,15 +1,4 @@
-  // screens/result_screen.dart
-  // ============================================================
-  // Rich result screen showing:
-  //   - Verdict badge + confidence bar
-  //   - AI-generated explanation (Gemini LLM)
-  //   - EXIF metadata analysis
-  //   - Detection tips
-  //   - Share card with branding
-  // ============================================================
-
   import 'dart:io';
-  // import 'dart:typed_data';
   import 'package:flutter/material.dart';
   import 'package:flutter/services.dart';
   import 'package:screenshot/screenshot.dart';
@@ -17,6 +6,7 @@
   import 'package:path_provider/path_provider.dart';
   import '../services/detection_service.dart';
   import '../utils/app_theme.dart';
+  import 'dart:convert';
 
   class ResultScreen extends StatefulWidget {
     final DetectionResult result;
@@ -34,6 +24,137 @@
 
   class _ResultScreenState extends State<ResultScreen>
       with SingleTickerProviderStateMixin {
+
+    // ── Grad-CAM state ────────────────────────────────────────────────
+    bool    _isLoadingGradCam = false;
+    String? _gradCamBase64;
+
+    // ── Grad-CAM handler ──────────────────────────────────────────────
+    Future<void> _handleGradCam() async {
+      setState(() => _isLoadingGradCam = true);
+      try {
+        final heatmap = await DetectionService()
+            .getGradCam(File(widget.imagePath));
+        if (!mounted) return;
+        if (heatmap != null) {
+          setState(() => _gradCamBase64 = heatmap);
+          _showGradCamModal(heatmap);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:         Text('Grad-CAM unavailable right now.'),
+              backgroundColor: AppTheme.error,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoadingGradCam = false);
+      }
+    }
+
+    // ── Grad-CAM modal ────────────────────────────────────────────────
+    void _showGradCamModal(String base64Image) {
+      final bytes = base64Decode(base64Image);
+      showModalBottomSheet(
+        context:            context,
+        isScrollControlled: true,
+        backgroundColor:    Colors.transparent,
+        builder: (_) => Container(
+          height: MediaQuery.of(context).size.height * 0.80,
+          decoration: const BoxDecoration(
+            color:        AppTheme.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(children: [
+
+            // ── Handle ─────────────────────────────────────────────
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color:        AppTheme.surfaceBorder,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Header ─────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color:        AppTheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.visibility_rounded,
+                      color: AppTheme.primary, size: 18),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('What Axiom Saw',
+                          style: TextStyle(fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary)),
+                      Text('Heatmap of focus regions',
+                          style: TextStyle(fontSize: 12,
+                              color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+              ]),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Heatmap image ───────────────────────────────────────
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                  child: Image.memory(
+                    bytes,
+                    fit:   BoxFit.contain,
+                    width: double.infinity,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Color legend ────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color:        AppTheme.surface2,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                  border: Border.all(color: AppTheme.surfaceBorder),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _LegendDot(color: Colors.blue,  label: 'Not focused'),
+                    _LegendDot(color: Colors.green, label: 'Mild focus'),
+                    _LegendDot(color: Colors.orange,label: 'High focus'),
+                    _LegendDot(color: Colors.red,   label: 'Most suspicious'),
+                  ],
+                ),
+              ),
+            ),
+
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ]),
+        ),
+      );
+    }
 
     // ── Animation controllers ─────────────────────────────────────
     late AnimationController _controller;
@@ -224,6 +345,34 @@
                       ),
                     ),
                   ),
+
+                  // ADD between the share and scan again buttons:
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoadingGradCam ? null : _handleGradCam,
+                      icon: _isLoadingGradCam
+                          ? const SizedBox(width: 16, height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppTheme.primary))
+                          : const Icon(Icons.visibility_rounded, size: 18),
+                      label: Text(
+                        _isLoadingGradCam
+                            ? 'Generating heatmap...'
+                            : 'See what Axiom detected',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        side:    const BorderSide(color: AppTheme.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape:   RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
@@ -523,7 +672,7 @@
                   // AFTER:
                   _buildFooterStat(
                     label: 'Analysed by',
-                    value: 'VeriNet v1.0',
+                    value: 'Axiom v1.0',
                     color: AppTheme.primary,
                   ),
                 ],
@@ -713,21 +862,28 @@
             ],
 
             // ── No EXIF / unavailable message ───────────────────
-            if (!exif.hasExif)
-              Row(
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      size: 14, color: riskColor),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(exif.summary,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color:    riskColor,
-                            height:   1.4)),
+            // Add a note when EXIF is absent:
+            if (!exif.hasExif) ...[
+              // Show different message based on why EXIF is missing
+              Row(children: [
+                Icon(
+                  exif.riskLevel == 'LOW'
+                      ? Icons.info_outline_rounded
+                      : Icons.warning_amber_rounded,
+                  size: 14, color: riskColor,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    exif.riskLevel == 'LOW'
+                        ? 'Screenshot or web image — metadata not applicable'
+                        : exif.summary,
+                    style: TextStyle(fontSize: 12,
+                        color: riskColor, height: 1.4),
                   ),
-                ],
-              ),
+                ),
+              ]),
+            ],
           ],
         ),
       );
@@ -798,5 +954,25 @@
         case 'LOW':    return AppTheme.success;
         default:       return AppTheme.textSecondary;
       }
+    }
+  }
+
+  // ── Legend dot widget ─────────────────────────────────────────────
+  class _LegendDot extends StatelessWidget {
+    final Color  color;
+    final String label;
+    const _LegendDot({required this.color, required this.label});
+
+    @override
+    Widget build(BuildContext context) {
+      return Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 14, height: 14,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(
+            fontSize: 10, color: AppTheme.textSecondary)),
+      ]);
     }
   }

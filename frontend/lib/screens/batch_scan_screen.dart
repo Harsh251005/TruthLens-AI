@@ -10,7 +10,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import '../services/hybrid_detection_service.dart';
 import '../services/notification_service.dart';
 import '../utils/app_theme.dart';
 import '../services/detection_service.dart';
@@ -43,7 +42,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
     with WidgetsBindingObserver {
 
   final _imagePicker      = ImagePicker();
-  final _hybridService    = HybridDetectionService();
+  final _detectionService = DetectionService();
   final _notifService     = NotificationService();
 
   // ── State ─────────────────────────────────────────────────────
@@ -132,8 +131,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
       });
 
       try {
-        final response =
-        await _hybridService.detect(_items[i].file);
+        final response = await _detectionService.detectImage(_items[i].file);
 
         if (!mounted) return;
         if (_isCancelled) break;

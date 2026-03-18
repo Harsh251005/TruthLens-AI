@@ -562,7 +562,7 @@ class _ScanDetailSheet extends StatelessWidget {
                   border: Border.all(
                       color: AppTheme.primary.withValues(alpha: 0.2)),
                 ),
-                child: const Text('VeriNet v1.0',
+                child: const Text('Axiom v1.0',
                     style: TextStyle(fontSize: 10,
                         color: AppTheme.primary,
                         fontWeight: FontWeight.w700)),

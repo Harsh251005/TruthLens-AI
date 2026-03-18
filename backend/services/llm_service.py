@@ -1,13 +1,4 @@
 # services/llm_service.py
-# ============================================================
-# Generates a human-like explanation of deepfake detection
-# results using Groq API (Llama 3.3 70B).
-#
-# Groq is used because:
-#   - Generous free tier with no credit card required
-#   - Very fast inference (tokens/sec much higher than others)
-#   - Llama 3.3 70B produces natural, varied explanations
-# ============================================================
 
 import os
 from groq import Groq
@@ -15,7 +6,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ── Initialize Groq client ────────────────────────────────────────
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 if GROQ_API_KEY:
@@ -25,7 +15,6 @@ else:
     client = None
     print("⚠️  GROQ_API_KEY not set — LLM explanations will use fallback")
 
-# ── Model to use ──────────────────────────────────────────────────
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
@@ -38,21 +27,6 @@ def generate_explanation(
     exif_flags: list[str],
     exif_risk: str,
 ) -> str:
-    """
-    Generates a natural language explanation of the deepfake analysis.
-
-    Args:
-        verdict:            'REAL' or 'FAKE'
-        confidence:         Confidence percentage e.g. 94.5
-        raw_score:          Raw model output 0.0 to 1.0
-        suspicious_regions: Facial regions flagged by visual analysis
-        exif_summary:       One-paragraph EXIF analysis summary
-        exif_flags:         List of suspicious EXIF findings
-        exif_risk:          'LOW', 'MEDIUM', or 'HIGH'
-
-    Returns:
-        A human-readable explanation string (2-3 paragraphs)
-    """
 
     if not client:
         return _fallback_explanation(verdict, confidence)
@@ -60,22 +34,23 @@ def generate_explanation(
     try:
         prompt = _build_prompt(
             verdict, confidence, raw_score,
-            suspicious_regions, exif_summary,
             exif_flags, exif_risk
         )
 
-        # Call Groq API with Llama 3.3 70B
         response = client.chat.completions.create(
             model    = GROQ_MODEL,
             messages = [
                 {
                     "role":    "system",
                     "content": (
-                        "You are TruthLens AI, an expert deepfake detection "
-                        "assistant. You explain complex AI analysis results in "
-                        "simple, friendly, and informative language. You always "
-                        "vary your explanations based on the specific data "
-                        "provided — never give generic responses."
+                        "You are a digital forensics expert who has spent years "
+                        "analysing manipulated images. You speak directly, plainly "
+                        "and honestly — like you're telling a friend what you found. "
+                        "You never use corporate language, bullet points, or "
+                        "structured formatting. You never say 'I' or refer to "
+                        "yourself. You never mention model names or technical "
+                        "systems. You just describe what the image shows and "
+                        "what it means. Keep it under 3 sentences. Sound human."
                     ),
                 },
                 {
@@ -83,8 +58,8 @@ def generate_explanation(
                     "content": prompt,
                 },
             ],
-            temperature = 0.7,   # Higher = more varied responses
-            max_tokens  = 350,   # Enough for 2-3 solid paragraphs
+            temperature = 0.4,
+            max_tokens  = 180,
         )
 
         return response.choices[0].message.content.strip()
@@ -98,100 +73,86 @@ def _build_prompt(
     verdict: str,
     confidence: float,
     raw_score: float,
-    suspicious_regions: list[str],
-    exif_summary: str,
     exif_flags: list[str],
     exif_risk: str,
 ) -> str:
-    """
-    Builds a detailed prompt with all detection signals so the
-    LLM can generate a specific, varied explanation each time.
-    """
 
-    regions_str    = ", ".join(suspicious_regions) if suspicious_regions \
-                     else "no specific regions isolated"
-    exif_flags_str = "; ".join(exif_flags) if exif_flags else "none"
-
-    # Translate raw score to a descriptive signal strength
-    if raw_score > 0.90:
-        signal = "extremely strong — the model is nearly certain"
-    elif raw_score > 0.75:
-        signal = "strong — the model detected clear manipulation patterns"
-    elif raw_score > 0.55:
-        signal = "moderate — some suspicious patterns were detected"
-    elif raw_score > 0.45:
-        signal = "borderline — the image is in an uncertain zone"
-    elif raw_score > 0.25:
-        signal = "weak — image appears mostly authentic"
+    # Translate raw score into plain language signal
+    if raw_score > 0.92:
+        signal = "almost certainly manipulated"
+    elif raw_score > 0.78:
+        signal = "clearly shows signs of manipulation"
+    elif raw_score > 0.62:
+        signal = "has some suspicious patterns worth noting"
+    elif raw_score > 0.50:
+        signal = "is borderline — slightly leans toward being fake"
+    elif raw_score > 0.35:
+        signal = "is borderline — slightly leans toward being real"
+    elif raw_score > 0.18:
+        signal = "looks mostly authentic"
     else:
-        signal = "very weak — the model sees strong signs of authenticity"
+        signal = "looks very authentic with no obvious manipulation signs"
 
-    return f"""Analyze these deepfake detection results and write a specific, 
-personalized explanation for this exact image. Do NOT give a generic response.
+    # Build EXIF context naturally
+    exif_context = ""
+    if exif_flags and exif_risk in ("HIGH", "MEDIUM"):
+        exif_context = (
+            f"The metadata also raised some flags: "
+            f"{'; '.join(exif_flags[:2])}."
+        )
+    elif exif_risk == "LOW":
+        exif_context = "The metadata looks consistent with a genuine photo."
 
-=== DETECTION DATA ===
-Verdict:         {verdict}
-Confidence:      {confidence}%
-Raw model score: {raw_score:.4f} (0.0=definitely real, 1.0=definitely fake)
-Signal strength: {signal}
-Suspicious facial regions: {regions_str}
-
-=== EXIF METADATA ===
-{exif_summary}
-Suspicious flags: {exif_flags_str}
-EXIF risk level:  {exif_risk}
-
-=== WRITING INSTRUCTIONS ===
-- Write exactly 2-3 short paragraphs in flowing prose (NO bullet points)
-- Paragraph 1: State the verdict clearly, mention the exact confidence score
-  and what the signal strength means for THIS specific image
-- Paragraph 2: Explain the specific EXIF findings for THIS image and what
-  they suggest about its origin
-- Paragraph 3: Give practical advice tailored to this specific result
-- Use simple language — no technical jargon, no model names
-- Be specific to the data above — vary your language based on the numbers
-- Keep total response under 200 words
-- Sound like a knowledgeable friend, not a robot
-
-Write the explanation now:"""
+    return (
+        f"This face photo {signal}. "
+        f"The confidence is {confidence:.1f}%. "
+        f"{exif_context} "
+        f"In 2-3 short plain sentences, tell the user what this means "
+        f"and what they should do — no formatting, no lists, just talk."
+    )
 
 
 def _fallback_explanation(verdict: str, confidence: float) -> str:
     """
-    Rule-based fallback when Groq API is unavailable.
-    Uses confidence ranges to vary the response.
+    Fallback when Groq is unavailable.
+    Written to sound natural, not templated.
     """
     if verdict == "FAKE":
         if confidence > 90:
             return (
-                f"This image shows very strong signs of being AI-generated or "
-                f"digitally manipulated. With {confidence:.1f}% confidence, our "
-                f"model detected clear patterns that are characteristic of deepfake "
-                f"technology. We strongly recommend not sharing or trusting this image "
-                f"without independent verification from a trusted source."
+                f"This one is almost certainly not a real photo — the patterns "
+                f"here are very consistent with AI-generated faces. "
+                f"At {confidence:.0f}% confidence, treat this image with serious "
+                f"scepticism and don't share it as if it were real."
+            )
+        elif confidence > 70:
+            return (
+                f"There are clear signs this image has been manipulated or "
+                f"generated, with {confidence:.0f}% confidence. "
+                f"It's worth verifying the source before trusting or sharing it."
             )
         else:
             return (
-                f"This image appears to have been manipulated or AI-generated, "
-                f"with {confidence:.1f}% confidence. While the signal is not "
-                f"overwhelming, there are enough suspicious patterns to warrant "
-                f"caution. Consider verifying this image through other means before "
-                f"sharing or acting on it."
+                f"Something about this image doesn't quite add up, though the "
+                f"signal isn't strong enough to be certain. "
+                f"Treat it with caution and verify the source if it matters."
             )
     else:
         if confidence > 90:
             return (
-                f"This image appears to be authentic with high confidence "
-                f"({confidence:.1f}%). Our model found strong indicators of a "
-                f"genuine photograph with no significant signs of AI manipulation. "
-                f"That said, no detection system is perfect — always use multiple "
-                f"verification methods for critical decisions."
+                f"This looks like a genuine photo — nothing here suggests "
+                f"manipulation at {confidence:.0f}% confidence. "
+                f"That said, no analysis is perfect, so use your own judgement too."
+            )
+        elif confidence > 70:
+            return (
+                f"This image appears real, with {confidence:.0f}% confidence. "
+                f"There are no strong red flags, though the reading isn't "
+                f"completely decisive."
             )
         else:
             return (
-                f"This image appears to be real, with {confidence:.1f}% confidence. "
-                f"While our model leans toward authenticity, the confidence level "
-                f"suggests some uncertainty. We recommend treating this result as "
-                f"one data point and verifying through additional means if the "
-                f"image is important."
+                f"This image leans toward being authentic but the confidence "
+                f"is low enough that you shouldn't rely solely on this result. "
+                f"Worth a second look if the image is important."
             )

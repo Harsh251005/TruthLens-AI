@@ -73,7 +73,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
               border: Border.all(
                   color: AppTheme.primary.withValues(alpha: 0.2)),
             ),
-            child: const Text('VeriNet',
+            child: const Text('Axiom',
                 style: TextStyle(fontSize: 10, color: AppTheme.primary,
                     fontWeight: FontWeight.w700)),
           ),
