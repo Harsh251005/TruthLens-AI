@@ -4,7 +4,6 @@
 # All other modules import `get_db_connection()` from here.
 # ============================================================
 
-import mysql.connector
 from mysql.connector import pooling
 from dotenv import load_dotenv
 import os

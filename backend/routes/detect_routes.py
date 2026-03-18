@@ -96,9 +96,12 @@ async def detect(
 
             # Persist updated streak
             cursor.execute(
-                "UPDATE users SET current_streak = %s, last_scan_date = %s "
-                "WHERE id = %s",
-                (new_streak, today, user_id)
+                """UPDATE users
+                   SET current_streak  = %s,
+                       last_scan_date  = %s,
+                       longest_streak  = GREATEST(longest_streak, %s)
+                   WHERE id = %s""",
+                (new_streak, today, new_streak, user_id)
             )
 
             conn.commit()

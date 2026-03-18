@@ -8,7 +8,8 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../utils/app_theme.dart';
-import 'login_screen.dart';
+import 'signup_screen.dart';
+import '../services/notification_service.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -70,12 +71,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  // AFTER:
   Future<void> _finishOnboarding() async {
     await StorageService.setOnboardingSeen();
+
+    // Request notification permission on first launch
+    // Android 13+ requires explicit permission — this shows the system dialog
+    await NotificationService().requestPermission();
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => const LoginScreen(),
+        pageBuilder: (_, _, _) => const SignupScreen(),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 500),

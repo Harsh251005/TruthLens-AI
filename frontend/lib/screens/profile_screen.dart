@@ -1,16 +1,7 @@
 // screens/profile_screen.dart
 // ============================================================
-// Profile screen — hero header, stats bar, tabbed account/security.
-//
-// AVATAR CHANGES (Step 9):
-//   • Hero avatar is now an AvatarWidget (renders emoji/photo/initial)
-//   • Tapping the avatar opens _showAvatarPicker() bottom sheet
-//   • Bottom sheet has:
-//       - Grid of 16 predefined emoji avatars
-//       - "Browse from Device" button (image_picker)
-//       - "Reset to Initial" option (grey out if already initial)
-//   • On selection: calls AuthService.updateAvatar() → saves to DB
-//     and calls StorageService.updateAvatar() → updates SharedPrefs
+// Profile screen — redesigned for a professional look.
+// All business logic unchanged — only UI rebuilt.
 // ============================================================
 
 import 'dart:convert';
@@ -62,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool      _isLoadingProfile   = true;
   bool      _isUpdatingName     = false;
   bool      _isUpdatingPassword = false;
-  bool      _isUpdatingAvatar   = false;   // NEW: avatar upload in progress
+  bool      _isUpdatingAvatar   = false;
   bool      _isEditingName      = false;
   bool      _isDeletingAccount  = false;
   bool      _isResettingAccount = false;
@@ -77,8 +68,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   ScanStats? _stats;
 
   // ── Avatar state ──────────────────────────────────────────────
-  String  _avatarType = 'initial';    // 'initial' | 'predefined' | 'custom'
-  String? _avatarData;               // avatar ID or base64 JPEG
+  String  _avatarType = 'initial';
+  String? _avatarData;
 
   @override
   void initState() {
@@ -122,7 +113,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       _isLoadingProfile = false;
     });
 
-    // Load notification preferences
     final streakEnabled = await NotificationService().isStreakNotifEnabled();
     final badgeEnabled  = await NotificationService().isBadgeNotifEnabled();
     setState(() {
@@ -133,22 +123,20 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  AVATAR — bottom-sheet picker
+  //  AVATAR — all logic unchanged
   // ═══════════════════════════════════════════════════════════════
 
-  /// Opens the avatar selection bottom sheet.
   void _showAvatarPicker() {
     showModalBottomSheet(
-      context:           context,
+      context:            context,
       isScrollControlled: true,
-      backgroundColor:   Colors.transparent,
-      builder:           (_) => _buildAvatarPickerSheet(),
+      backgroundColor:    Colors.transparent,
+      builder:            (_) => _buildAvatarPickerSheet(),
     );
   }
 
   Widget _buildAvatarPickerSheet() {
     return Container(
-      // Takes up to 85% of screen height
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.85,
       ),
@@ -159,7 +147,6 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Drag handle ──────────────────────────────────────
           const SizedBox(height: 12),
           Container(
             width: 40, height: 4,
@@ -169,8 +156,6 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
           const SizedBox(height: 16),
-
-          // ── Title ─────────────────────────────────────────────
           const Text('Choose Your Avatar',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary)),
@@ -178,8 +163,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           const Text('Pick an emoji or upload a photo',
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
           const SizedBox(height: 20),
-
-          // ── Predefined emoji grid ──────────────────────────────
           Flexible(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -194,20 +177,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ),
                 itemCount: AvatarConstants.predefined.length,
                 itemBuilder: (_, i) {
-                  final avatar  = AvatarConstants.predefined[i];
+                  final avatar     = AvatarConstants.predefined[i];
                   final isSelected = _avatarType == 'predefined' &&
                       _avatarData == avatar.id;
-
                   return GestureDetector(
                     onTap: () => _selectPredefined(avatar),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       decoration: BoxDecoration(
-                        color: avatar.color.withValues(alpha: isSelected ? 0.3 : 0.12),                        borderRadius: BorderRadius.circular(16),
+                        color: avatar.color.withValues(
+                            alpha: isSelected ? 0.3 : 0.12),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
-                              ? avatar.color
-                              : Colors.transparent,
+                              ? avatar.color : Colors.transparent,
                           width: 2.5,
                         ),
                       ),
@@ -224,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             const SizedBox(height: 2),
                             Icon(Icons.check_circle,
                                 color: avatar.color, size: 14),
-                          ]
+                          ],
                         ],
                       ),
                     ),
@@ -233,53 +216,45 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
             ),
           ),
-
-          // ── Action buttons ────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Column(children: [
               const Divider(color: AppTheme.surfaceBorder),
               const SizedBox(height: 8),
-
-              // Browse from device
               SizedBox(
                 width: double.infinity, height: 48,
                 child: ElevatedButton.icon(
                   onPressed: _pickFromGallery,
                   icon:  const Icon(Icons.photo_library_outlined, size: 20),
                   label: const Text('Browse from Device',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                        borderRadius:
+                        BorderRadius.circular(AppTheme.radiusM)),
                   ),
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // Reset to initial (disabled if already initial)
               SizedBox(
                 width: double.infinity, height: 44,
                 child: OutlinedButton.icon(
-                  onPressed: _avatarType == 'initial'
-                      ? null
-                      : _resetToInitial,
+                  onPressed: _avatarType == 'initial' ? null : _resetToInitial,
                   icon:  const Icon(Icons.refresh_rounded, size: 18),
                   label: const Text('Reset to Default',
                       style: TextStyle(fontSize: 14)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.textSecondary,
-                    side: BorderSide(color: AppTheme.surfaceBorder),
+                    side: const BorderSide(color: AppTheme.surfaceBorder),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+                        borderRadius:
+                        BorderRadius.circular(AppTheme.radiusM)),
                   ),
                 ),
               ),
-
-              // Safe-area bottom padding
               SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
             ]),
           ),
@@ -288,65 +263,41 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-
-  // ── Select predefined emoji avatar ────────────────────────────
   Future<void> _selectPredefined(PredefinedAvatar avatar) async {
-    Navigator.of(context).pop();  // Close bottom sheet first
+    Navigator.of(context).pop();
     await _saveAvatar(avatarType: 'predefined', avatarData: avatar.id);
   }
 
-
-  // ── Pick image from device gallery ────────────────────────────
   Future<void> _pickFromGallery() async {
-    Navigator.of(context).pop(); // Close avatar picker bottom sheet
-
-    // Step 1: Pick image from gallery
+    Navigator.of(context).pop();
     final picked = await _imagePicker.pickImage(
-      source:       ImageSource.gallery,
-      imageQuality: 90,
+      source: ImageSource.gallery, imageQuality: 90,
     );
     if (picked == null || !mounted) return;
-
     final bytes = await picked.readAsBytes();
-
-    // Step 2: Open our custom Flutter crop page
-    // This is a full-screen page we control entirely — no native toolbar
     if (!mounted) return;
-
     final croppedBytes = await Navigator.of(context).push<Uint8List>(
-      MaterialPageRoute(
-        builder: (_) => _CropPage(imageBytes: bytes),
-      ),
+      MaterialPageRoute(builder: (_) => _CropPage(imageBytes: bytes)),
     );
-
     if (croppedBytes == null || !mounted) return;
-
-    // Step 3: Convert to base64 and save
     final base64Str = base64Encode(croppedBytes);
     await _saveAvatar(avatarType: 'custom', avatarData: base64Str);
   }
 
-  // ── Reset to letter initial ───────────────────────────────────
   Future<void> _resetToInitial() async {
     Navigator.of(context).pop();
     await _saveAvatar(avatarType: 'initial', avatarData: null);
   }
 
-
-  // ── Call API + update local state ─────────────────────────────
   Future<void> _saveAvatar({
     required String avatarType,
     String?         avatarData,
   }) async {
     setState(() => _isUpdatingAvatar = true);
-
     final result = await _authService.updateAvatar(
-      avatarType: avatarType,
-      avatarData: avatarData,
+      avatarType: avatarType, avatarData: avatarData,
     );
-
     if (!mounted) return;
-
     if (result.success) {
       setState(() {
         _avatarType       = avatarType;
@@ -356,29 +307,24 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else {
       setState(() => _isUpdatingAvatar = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:         Text(result.message),
-          backgroundColor: AppTheme.error,
-        ),
+        SnackBar(content: Text(result.message),
+            backgroundColor: AppTheme.error),
       );
     }
   }
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  NAME UPDATE
+  //  NAME UPDATE — logic unchanged
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> _handleUpdateName() async {
     setState(() { _nameError = null; _nameSuccess = null; });
     if (!_nameFormKey.currentState!.validate()) return;
     setState(() => _isUpdatingName = true);
-
     final result = await _authService.updateProfile(
         name: _nameController.text.trim());
-
     if (!mounted) return;
-
     if (result.success) {
       await StorageService.updateName(_nameController.text.trim());
       setState(() {
@@ -388,28 +334,23 @@ class _ProfileScreenState extends State<ProfileScreen>
         _isEditingName  = false;
       });
     } else {
-      setState(() {
-        _isUpdatingName = false;
-        _nameError      = result.message;
-      });
+      setState(() { _isUpdatingName = false; _nameError = result.message; });
     }
   }
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  PASSWORD UPDATE
+  //  PASSWORD UPDATE — logic unchanged
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> _handleUpdatePassword() async {
     setState(() { _passwordError = null; _passwordSuccess = null; });
     if (!_passwordFormKey.currentState!.validate()) return;
     setState(() => _isUpdatingPassword = true);
-
     final result = await _authService.updateProfile(
       currentPassword: _currentPasswordController.text,
       newPassword:     _newPasswordController.text,
     );
-
     if (!mounted) return;
     setState(() {
       _isUpdatingPassword = false;
@@ -426,7 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  LOGOUT
+  //  LOGOUT — logic unchanged
   // ═══════════════════════════════════════════════════════════════
 
   Future<void> _handleLogout() async {
@@ -460,13 +401,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
-
     if (confirmed == true) {
       await StorageService.clearUser();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder:      (_, _, _) => const LoginScreen(),
+          pageBuilder:        (_, _, _) => const LoginScreen(),
           transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
@@ -476,10 +416,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // ── Delete Account ────────────────────────────────────────────
+
+  // ═══════════════════════════════════════════════════════════════
+  //  DELETE ACCOUNT — logic unchanged
+  // ═══════════════════════════════════════════════════════════════
+
   Future<void> _handleDeleteAccount() async {
     final passwordController = TextEditingController();
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -504,25 +447,24 @@ class _ProfileScreenState extends State<ProfileScreen>
               obscureText: true,
               style: const TextStyle(color: AppTheme.textPrimary),
               decoration: InputDecoration(
-                hintText:    'Enter your password to confirm',
-                hintStyle:   const TextStyle(
+                hintText:  'Enter your password to confirm',
+                hintStyle: const TextStyle(
                     color: AppTheme.textSecondary, fontSize: 13),
-                filled:      true,
-                fillColor:   AppTheme.background,
+                filled:    true,
+                fillColor: AppTheme.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  borderSide: const BorderSide(
-                      color: AppTheme.surfaceBorder),
+                  borderSide:
+                  const BorderSide(color: AppTheme.surfaceBorder),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  borderSide: const BorderSide(
-                      color: AppTheme.surfaceBorder),
+                  borderSide:
+                  const BorderSide(color: AppTheme.surfaceBorder),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                  borderSide: const BorderSide(
-                      color: AppTheme.error),
+                  borderSide: const BorderSide(color: AppTheme.error),
                 ),
               ),
             ),
@@ -547,11 +489,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
-
     if (confirmed != true) return;
-
     if (!mounted) return;
-
     if (passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter your password'),
@@ -559,18 +498,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
       return;
     }
-
     setState(() => _isDeletingAccount = true);
-
-    final result = await _authService.deleteAccount(
-        password: passwordController.text);
-
+    final result =
+    await _authService.deleteAccount(password: passwordController.text);
     if (!mounted) return;
-
     if (result.success) {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
-          pageBuilder: (_, _, _) => const LoginScreen(),
+          pageBuilder:        (_, _, _) => const LoginScreen(),
           transitionsBuilder: (_, animation, _, child) =>
               FadeTransition(opacity: animation, child: child),
           transitionDuration: const Duration(milliseconds: 400),
@@ -587,7 +522,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
 
-// ── Reset Account ─────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  //  RESET ACCOUNT — logic unchanged
+  // ═══════════════════════════════════════════════════════════════
+
   Future<void> _handleResetAccount() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -622,19 +560,12 @@ class _ProfileScreenState extends State<ProfileScreen>
         ],
       ),
     );
-
     if (confirmed != true) return;
-
     setState(() => _isResettingAccount = true);
-
     final result = await _authService.resetAccount();
-
     if (!mounted) return;
-
     setState(() => _isResettingAccount = false);
-
     if (result.success) {
-      // Reset local avatar state
       setState(() {
         _avatarType = 'initial';
         _avatarData = null;
@@ -654,642 +585,490 @@ class _ProfileScreenState extends State<ProfileScreen>
 
 
   // ═══════════════════════════════════════════════════════════════
-  //  BUILD
+  //  BUILD — completely redesigned
   // ═══════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingProfile) {
+      return const Scaffold(
+        backgroundColor: AppTheme.background,
+        body: Center(
+            child: CircularProgressIndicator(color: AppTheme.primary)),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppTheme.background,
-      body: _isLoadingProfile
-          ? const Center(
-          child: CircularProgressIndicator(color: AppTheme.primary))
-          : NestedScrollView(
-        headerSliverBuilder: (_, _) => [
-          SliverToBoxAdapter(child: _buildHeroHeader()),
+      body: NestedScrollView(
+        headerSliverBuilder: (_, innerScrolled) => [
+          _buildSliverHeader(innerScrolled),
         ],
         body: Column(children: [
           _buildTabBar(),
-          Expanded(child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildAccountTab(),
-              _buildSecurityTab(),
-            ],
-          )),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAccountTab(),
+                _buildSecurityTab(),
+              ],
+            ),
+          ),
         ]),
       ),
     );
   }
 
 
-  // ── Hero Header ───────────────────────────────────────────────
-  Widget _buildHeroHeader() {
+  // ── Sliver collapsible header ─────────────────────────────────
+  Widget _buildSliverHeader(bool innerScrolled) {
+    return SliverAppBar(
+      expandedHeight:  360,
+      collapsedHeight: 60,
+      pinned:          true,
+      backgroundColor: AppTheme.surface,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new,
+            color: AppTheme.textPrimary, size: 20),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: AnimatedOpacity(
+        opacity:  innerScrolled ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 200),
+        child: Row(children: [
+          AvatarWidget(
+            avatarType: _avatarType,
+            avatarData: _avatarData,
+            name:       _userName,
+            size:       28,
+            showRing:   false,
+          ),
+          const SizedBox(width: 10),
+          Text(_userName,
+              style: const TextStyle(fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary)),
+        ]),
+      ),
+      flexibleSpace: FlexibleSpaceBar(
+        collapseMode: CollapseMode.pin,
+        background:   _buildHeroContent(),
+      ),
+    );
+  }
+
+
+  // ── Hero content inside the flexible space ────────────────────
+  Widget _buildHeroContent() {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF111827), Color(0xFF0A0E1A)],
-          begin: Alignment.topCenter,
-          end:   Alignment.bottomCenter,
+          colors: [Color(0xFF0F1629), Color(0xFF0A0E1A)],
+          begin:  Alignment.topCenter,
+          end:    Alignment.bottomCenter,
         ),
       ),
       child: SafeArea(
         bottom: false,
-        child: Column(children: [
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 56),  // space for back button
 
-          // ── Back button row ──────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new,
-                    color: AppTheme.textPrimary, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              const Expanded(
-                child: Text('My Profile',
-                    style: TextStyle(fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary)),
-              ),
-            ]),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ── Avatar with edit overlay ──────────────────────────
-          GestureDetector(
-            onTap: _isUpdatingAvatar ? null : _showAvatarPicker,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                // The avatar circle (with glowing ring)
-                AvatarWidget(
-                  avatarType: _avatarType,
-                  avatarData: _avatarData,
-                  name:       _userName,
-                  size:       90,
-                  showRing:   true,
-                ),
-
-                // Loading indicator overlay
-                if (_isUpdatingAvatar)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color:  Colors.black45,
-                        shape:  BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Edit pencil badge (bottom-right)
-                Positioned(
-                  bottom: 0,
-                  right:  0,
-                  child: Container(
-                    width: 28, height: 28,
+            // ── Avatar ─────────────────────────────────────────
+            GestureDetector(
+              onTap: _isUpdatingAvatar ? null : _showAvatarPicker,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  // Outer glow ring
+                  Container(
+                    width: 100, height: 100,
                     decoration: BoxDecoration(
-                      color:  AppTheme.primary,
-                      shape:  BoxShape.circle,
-                      border: Border.all(color: AppTheme.background, width: 2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color:      AppTheme.primary.withValues(alpha: 0.4),
-                          blurRadius: 8,
+                          color:      AppTheme.primary.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          spreadRadius: 4,
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 14),
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: AvatarWidget(
+                        avatarType: _avatarType,
+                        avatarData: _avatarData,
+                        name:       _userName,
+                        size:       94,
+                        showRing:   false,
+                      ),
+                    ),
                   ),
-                ),
+                  // Loading overlay
+                  if (_isUpdatingAvatar)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.black45,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2),
+                        ),
+                      ),
+                    ),
+                  // Edit badge
+                  Positioned(
+                    bottom: 0, right: 0,
+                    child: Container(
+                      width: 30, height: 30,
+                      decoration: BoxDecoration(
+                        color:  AppTheme.primary,
+                        shape:  BoxShape.circle,
+                        border: Border.all(
+                            color: const Color(0xFF0A0E1A), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color:      AppTheme.primary.withValues(alpha: 0.5),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.edit_rounded,
+                          color: Colors.white, size: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Name ─────────────────────────────────────────────
+            Text(_userName,
+                style: const TextStyle(fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.3)),
+
+            const SizedBox(height: 4),
+
+            // ── Email with icon ───────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.email_outlined,
+                    color: AppTheme.textSecondary, size: 13),
+                const SizedBox(width: 5),
+                Text(_userEmail,
+                    style: const TextStyle(fontSize: 13,
+                        color: AppTheme.textSecondary)),
               ],
             ),
-          ),
 
+            const SizedBox(height: 16),
+
+            // ── Stats row ─────────────────────────────────────────
+            _buildStatsRow(),
+
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+  // ── Stats row — 3 chips ───────────────────────────────────────
+  Widget _buildStatsRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingL),
+      child: Row(children: [
+        _buildStatChip(
+          icon:  Icons.document_scanner_rounded,
+          label: 'Total Scans',
+          value: '${_stats?.totalScans ?? 0}',
+          color: AppTheme.primary,
+        ),
+        const SizedBox(width: 8),
+        _buildStatChip(
+          icon:  Icons.verified_rounded,
+          label: 'Authentic',
+          value: '${_stats?.totalReal ?? 0}',
+          color: AppTheme.success,
+        ),
+        const SizedBox(width: 8),
+        _buildStatChip(
+          icon:  Icons.dangerous_rounded,
+          label: 'Deepfakes',
+          value: '${_stats?.totalFake ?? 0}',
+          color: AppTheme.error,
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildStatChip({
+    required IconData icon,
+    required String   label,
+    required String   value,
+    required Color    color,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color:        color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppTheme.radiusM),
+          border:       Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(children: [
+          Icon(icon, color: color, size: 18),
           const SizedBox(height: 4),
-
-          // Subtle hint below avatar
-          const Text('Tap to change',
-              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-
-          const SizedBox(height: 10),
-
-          // ── Name ─────────────────────────────────────────────
-          Text(_userName, style: const TextStyle(fontSize: 22,
-              fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-
-          const SizedBox(height: 4),
-
-          // ── Email ────────────────────────────────────────────
-          Text(_userEmail, style: const TextStyle(fontSize: 14,
-              color: AppTheme.textSecondary)),
-
-          const SizedBox(height: 10),
-
-// ── Earned badges strip ───────────────────────────────────
-          _buildEarnedBadgesStrip(),
-
-          const SizedBox(height: 24),
-
-          // ── Stats bar ────────────────────────────────────────
-          _buildStatsBar(),
-
-          const SizedBox(height: 24),
+          Text(value,
+              style: TextStyle(fontSize: 18,
+                  fontWeight: FontWeight.w800, color: color)),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(fontSize: 10,
+                  color: AppTheme.textSecondary),
+              textAlign: TextAlign.center),
         ]),
       ),
     );
   }
 
 
-  // ── Stats Bar ─────────────────────────────────────────────────
-  Widget _buildStatsBar() {
-    return Container(
-      margin:  const EdgeInsets.symmetric(horizontal: AppTheme.paddingL),
-      padding: const EdgeInsets.symmetric(
-          vertical: AppTheme.paddingM, horizontal: AppTheme.paddingL),
-      decoration: BoxDecoration(
-        color:        AppTheme.surface2,
-        borderRadius: BorderRadius.circular(AppTheme.radiusM),
-        border:       Border.all(color: AppTheme.surfaceBorder),
-      ),
-      child: Row(children: [
-        _buildStatItem('Total Scans', '${_stats?.totalScans ?? 0}', AppTheme.primary),
-        _buildStatDivider(),
-        _buildStatItem('Authentic',   '${_stats?.totalReal  ?? 0}', AppTheme.success),
-        _buildStatDivider(),
-        _buildStatItem('Deepfakes',   '${_stats?.totalFake  ?? 0}', AppTheme.error),
-      ]),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Expanded(
-      child: Column(children: [
-        Text(value, style: TextStyle(fontSize: 22,
-            fontWeight: FontWeight.w800, color: color)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 11,
-            color: AppTheme.textSecondary)),
-      ]),
-    );
-  }
-
-  Widget _buildStatDivider() =>
-      Container(width: 1, height: 36, color: AppTheme.surfaceBorder);
-
-
-  // ── Tab Bar ───────────────────────────────────────────────────
+  // ── Tab bar ───────────────────────────────────────────────────
   Widget _buildTabBar() {
     return Container(
       color: AppTheme.surface,
       child: TabBar(
-        controller:            _tabController,
-        indicatorColor:        AppTheme.primary,
-        indicatorWeight:       2,
-        labelColor:            AppTheme.primary,
-        unselectedLabelColor:  AppTheme.textSecondary,
-        labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        tabs: const [Tab(text: 'Account'), Tab(text: 'Security')],
+        controller:           _tabController,
+        indicatorColor:       AppTheme.primary,
+        indicatorWeight:      2,
+        labelColor:           AppTheme.primary,
+        unselectedLabelColor: AppTheme.textSecondary,
+        labelStyle: const TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w600),
+        tabs: const [
+          Tab(text: 'Account'),
+          Tab(text: 'Security'),
+        ],
       ),
     );
   }
 
 
-  // ── Account Tab ───────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  //  ACCOUNT TAB
+  // ═══════════════════════════════════════════════════════════════
+
   Widget _buildAccountTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppTheme.paddingL),
+      // AFTER:
+      padding: EdgeInsets.only(
+        top:    20,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const SizedBox(height: 8),
-        _buildSectionLabel('Display Name'),
-        const SizedBox(height: 12),
-        _buildNameSection(),
-        const SizedBox(height: 16),
-        _buildBadgesRow(),
-        const SizedBox(height: 24),
-        _buildSectionLabel('Email Address'),
-        const SizedBox(height: 12),
-        _buildReadOnlyField(
-          icon:  Icons.email_outlined,
-          value: _userEmail,
-          note:  'Email cannot be changed',
-        ),
-        const SizedBox(height: 32),
-        _buildLogoutButton(),
+
+        // ── Profile section ──────────────────────────────────────
+        _buildSectionHeader('Profile'),
+        _buildSettingsCard(children: [
+          _buildNameRow(),
+          _buildDivider(),
+          _buildReadOnlyRow(
+            icon:  Icons.email_outlined,
+            label: 'Email',
+            value: _userEmail,
+            note:  'Cannot be changed',
+          ),
+        ]),
+
+        const SizedBox(height: 20),
+
+        // ── Achievements section ─────────────────────────────────
+        _buildSectionHeader('Achievements'),
+        _buildBadgesCard(),
+
+        const SizedBox(height: 20),
+
+        // ── Session section ──────────────────────────────────────
+        _buildSectionHeader('Session'),
+        _buildSettingsCard(children: [
+          _buildActionRow(
+            icon:       Icons.logout_rounded,
+            iconColor:  AppTheme.error,
+            label:      'Sign Out',
+            labelColor: AppTheme.error,
+            onTap:      _handleLogout,
+          ),
+        ]),
+
         const SizedBox(height: 32),
       ]),
     );
   }
 
-  Widget _buildNameSection() {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.paddingL),
-      decoration: AppTheme.cardDecoration(),
-      child: _isEditingName
-          ? Form(
-        key: _nameFormKey,
-        child: Column(children: [
-          CustomTextField(
-            label: 'Full Name', hint: 'Enter your new name',
-            controller: _nameController, icon: Icons.person_outline,
-            validator: Validators.name,
-            textInputAction: TextInputAction.done,
-          ),
-          const SizedBox(height: 16),
-          if (_nameError   != null) ...[_buildBanner(_nameError!,   isError: true),  const SizedBox(height: 12)],
-          if (_nameSuccess != null) ...[_buildBanner(_nameSuccess!, isError: false), const SizedBox(height: 12)],
-          Row(children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => setState(() {
-                  _isEditingName       = false;
-                  _nameController.text = _userName;
-                  _nameError           = null;
-                }),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.textSecondary,
-                  side: const BorderSide(color: AppTheme.surfaceBorder),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+
+  // ── Name row — shows name or inline edit form ─────────────────
+  Widget _buildNameRow() {
+    if (_isEditingName) {
+      return Padding(
+        padding: const EdgeInsets.all(4),
+        child: Form(
+          key: _nameFormKey,
+          child: Column(children: [
+            CustomTextField(
+              label:           'Full Name',
+              hint:            'Enter your new name',
+              controller:      _nameController,
+              icon:            Icons.person_outline,
+              validator:       Validators.name,
+              textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 12),
+            if (_nameError   != null) ...[
+              _buildBanner(_nameError!,   isError: true),
+              const SizedBox(height: 10),
+            ],
+            if (_nameSuccess != null) ...[
+              _buildBanner(_nameSuccess!, isError: false),
+              const SizedBox(height: 10),
+            ],
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() {
+                    _isEditingName       = false;
+                    _nameController.text = _userName;
+                    _nameError           = null;
+                  }),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondary,
+                    side: const BorderSide(color: AppTheme.surfaceBorder),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius:
+                        BorderRadius.circular(AppTheme.radiusM)),
+                  ),
+                  child: const Text('Cancel'),
                 ),
-                child: const Text('Cancel'),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: PrimaryButton(
-                label: 'Save', onPressed: _handleUpdateName,
-                isLoading: _isUpdatingName,
+              const SizedBox(width: 10),
+              Expanded(
+                child: PrimaryButton(
+                  label:     'Save',
+                  onPressed: _handleUpdateName,
+                  isLoading: _isUpdatingName,
+                ),
               ),
-            ),
+            ]),
           ]),
-        ]),
-      )
-          : Row(children: [
-        Container(
-          width: 44, height: 44,
+        ),
+      );
+    }
+
+    // ── Display mode ──────────────────────────────────────────────
+    return _buildInfoRow(
+      icon:       Icons.person_outline,
+      iconColor:  AppTheme.primary,
+      label:      'Full Name',
+      value:      _userName,
+      trailing: GestureDetector(
+        onTap: () => setState(() {
+          _isEditingName = true;
+          _nameSuccess   = null;
+          _nameError     = null;
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color:        AppTheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppTheme.radiusS),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.25)),
           ),
-          child: const Icon(Icons.person_outline, color: AppTheme.primary, size: 22),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Full Name', style: TextStyle(
-                fontSize: 12, color: AppTheme.textSecondary)),
-            const SizedBox(height: 2),
-            Text(_userName, style: const TextStyle(fontSize: 16,
-                fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-          ]),
-        ),
-        GestureDetector(
-          onTap: () => setState(() {
-            _isEditingName = true;
-            _nameSuccess   = null;
-            _nameError     = null;
-          }),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color:  AppTheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
-            ),
-            child: const Text('Edit', style: TextStyle(
-                color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.w600)),
-          ),
-        ),
-      ]),
-    );
-  }
-
-  Widget _buildReadOnlyField({
-    required IconData icon, required String value, required String note,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.paddingL),
-      decoration: AppTheme.cardDecoration(),
-      child: Row(children: [
-        Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(
-            color:        AppTheme.textSecondary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(AppTheme.radiusS),
-          ),
-          child: Icon(icon, color: AppTheme.textSecondary, size: 22),
-        ),
-        const SizedBox(width: 14),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(value, style: const TextStyle(fontSize: 16,
-              fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
-          const SizedBox(height: 2),
-          Text(note, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-        ])),
-        const Icon(Icons.lock_outline, color: AppTheme.textSecondary, size: 18),
-      ]),
-    );
-  }
-
-  Widget _buildLogoutButton() {
-    return SizedBox(
-      width: double.infinity, height: 52,
-      child: OutlinedButton.icon(
-        onPressed: _handleLogout,
-        icon:  const Icon(Icons.logout, size: 18),
-        label: const Text('Sign Out',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppTheme.error,
-          side: BorderSide(color: AppTheme.error.withValues(alpha: 0.5)),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusM)),
+          child: const Text('Edit',
+              style: TextStyle(fontSize: 12,
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w600)),
         ),
       ),
     );
   }
 
-  Widget _buildBadgesRow() {
-    return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const BadgesScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.paddingL),
-        decoration: AppTheme.cardDecoration(
-            borderColor: AppTheme.accent.withValues(alpha: 0.3)),
-        child: Row(children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color:        AppTheme.accent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(AppTheme.radiusS),
-            ),
-            child: const Icon(Icons.emoji_events_rounded,
-                color: AppTheme.accent, size: 22),
-          ),
-          const SizedBox(width: 14),
-          const Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Badges & Streaks',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary)),
-              Text('View your achievements',
-                  style: TextStyle(fontSize: 12,
-                      color: AppTheme.textSecondary)),
-            ]),
-          ),
-          const Icon(Icons.chevron_right,
-              color: AppTheme.textSecondary, size: 20),
-        ]),
-      ),
-    );
-  }
 
-
-  // ── Security Tab ──────────────────────────────────────────────
-  Widget _buildSecurityTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppTheme.paddingL),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(AppTheme.paddingM),
-          decoration: BoxDecoration(
-            color:        AppTheme.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border:       Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-          ),
-          child: const Row(children: [
-            Icon(Icons.info_outline, color: AppTheme.primary, size: 18),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text('Use a strong password with letters, numbers and symbols.',
-                  style: TextStyle(color: AppTheme.primary, fontSize: 13, height: 1.4)),
-            ),
-          ]),
+  // ── Badges card ───────────────────────────────────────────────
+  Widget _buildBadgesCard() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.paddingL),
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const BadgesScreen()),
         ),
-        const SizedBox(height: 20),
-        // ── Notifications section ──────────────────────────────
-        _buildSectionLabel('Notifications'),
-        const SizedBox(height: 12),
-        Container(
+        child: Container(
           padding: const EdgeInsets.all(AppTheme.paddingL),
-          decoration: AppTheme.cardDecoration(),
-          child: Column(children: [
-
-            // Streak reminder toggle
-            Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color:        AppTheme.accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                ),
-                child: const Icon(Icons.local_fire_department_rounded,
-                    color: AppTheme.accent, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Daily Streak Reminder',
-                      style: TextStyle(fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary)),
-                  const Text('Reminds you to scan at 8:00 PM',
-                      style: TextStyle(fontSize: 12,
-                          color: AppTheme.textSecondary)),
-                ],
-              )),
-              Switch(
-                value:          _streakNotifEnabled,
-                activeThumbColor: AppTheme.accent,
-                onChanged: (val) async {
-                  setState(() => _streakNotifEnabled = val);
-                  await NotificationService().setStreakNotifEnabled(val);
-                },
-              ),
-            ]),
-
-            const Divider(color: AppTheme.surfaceBorder, height: 24),
-
-            // Badge progress toggle
-            Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  color:        AppTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(AppTheme.radiusS),
-                ),
-                child: const Icon(Icons.emoji_events_rounded,
-                    color: AppTheme.primary, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Badge Progress Alerts',
-                      style: TextStyle(fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.textPrimary)),
-                  const Text('Notifies when close to a new badge',
-                      style: TextStyle(fontSize: 12,
-                          color: AppTheme.textSecondary)),
-                ],
-              )),
-              Switch(
-                value:       _badgeNotifEnabled,
-                activeThumbColor: AppTheme.primary,
-                onChanged: (val) async {
-                  setState(() => _badgeNotifEnabled = val);
-                  await NotificationService().setBadgeNotifEnabled(val);
-                },
-              ),
-            ]),
-
-          ]),
-        ),
-        const SizedBox(height: 20),
-        _buildSectionLabel('Change Password'),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(AppTheme.paddingL),
-          decoration: AppTheme.cardDecoration(),
-          child: Form(
-            key: _passwordFormKey,
-            child: Column(children: [
-              CustomTextField(
-                label: 'Current Password', hint: 'Enter current password',
-                controller: _currentPasswordController,
-                icon: Icons.lock_outline, isPassword: true,
-                validator: Validators.password,
-              ),
-              const SizedBox(height: 16),
+          decoration: BoxDecoration(
+            color:        AppTheme.surface,
+            borderRadius: BorderRadius.circular(AppTheme.radiusL),
+            border: Border.all(
+                color: AppTheme.accent.withValues(alpha: 0.25)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
               Row(children: [
-                const Expanded(child: Divider(color: AppTheme.surfaceBorder)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('New Password', style: TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary)),
+                Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color:        AppTheme.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.emoji_events_rounded,
+                      color: AppTheme.accent, size: 20),
                 ),
-                const Expanded(child: Divider(color: AppTheme.surfaceBorder)),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Badges & Streaks',
+                          style: TextStyle(fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary)),
+                      Text('Tap to view all achievements',
+                          style: TextStyle(fontSize: 12,
+                              color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right,
+                    color: AppTheme.textSecondary, size: 20),
               ]),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'New Password', hint: 'Enter new password',
-                controller: _newPasswordController,
-                icon: Icons.lock_outline, isPassword: true,
-                validator: Validators.password,
-              ),
-              const SizedBox(height: 16),
-              CustomTextField(
-                label: 'Confirm New Password', hint: 'Repeat new password',
-                controller: _confirmPasswordController,
-                icon: Icons.lock_outline, isPassword: true,
-                validator: (v) =>
-                    Validators.confirmPassword(v, _newPasswordController.text),
-                textInputAction: TextInputAction.done,
-              ),
-              const SizedBox(height: 20),
-              if (_passwordError   != null) ...[_buildBanner(_passwordError!,   isError: true),  const SizedBox(height: 12)],
-              if (_passwordSuccess != null) ...[_buildBanner(_passwordSuccess!, isError: false), const SizedBox(height: 12)],
-              PrimaryButton(
-                label: 'Update Password', onPressed: _handleUpdatePassword,
-                isLoading: _isUpdatingPassword,
-              ),
 
-              const SizedBox(height: 24),
-              _buildSectionLabel('Danger Zone'),
-              const SizedBox(height: 12),
-
-// Reset account button
-              SizedBox(
-                width: double.infinity, height: 52,
-                child: OutlinedButton.icon(
-                  onPressed: _isResettingAccount ? null : _handleResetAccount,
-                  icon: _isResettingAccount
-                      ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.accent))
-                      : const Icon(Icons.restart_alt_rounded, size: 18),
-                  label: const Text('Reset Account',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.accent,
-                    side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Delete account button
-              SizedBox(
-                width: double.infinity, height: 52,
-                child: OutlinedButton.icon(
-                  onPressed: _isDeletingAccount ? null : _handleDeleteAccount,
-                  icon: _isDeletingAccount
-                      ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppTheme.error))
-                      : const Icon(Icons.delete_forever_rounded, size: 18),
-                  label: const Text('Delete Account',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.error,
-                    side: BorderSide(color: AppTheme.error.withValues(alpha: 0.5)),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.radiusM)),
-                  ),
-                ),
-              ),
-            ]),
+              // ── Earned badges preview strip ──────────────────
+              _buildBadgesStrip(),
+            ],
           ),
         ),
-        const SizedBox(height: 32),
-      ]),
-    );
-  }
-
-
-  // ── Helpers ───────────────────────────────────────────────────
-  Widget _buildSectionLabel(String label) {
-    return Text(label.toUpperCase(),
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-            color: AppTheme.textSecondary, letterSpacing: 1.0));
-  }
-
-  Widget _buildBanner(String message, {required bool isError}) {
-    final color = isError ? AppTheme.error : AppTheme.success;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.paddingM),
-      decoration: BoxDecoration(
-        color:        color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(AppTheme.radiusS),
-        border:       Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Row(children: [
-        Icon(isError ? Icons.error_outline : Icons.check_circle_outline,
-            color: color, size: 18),
-        const SizedBox(width: 8),
-        Expanded(child: Text(message, style: TextStyle(color: color, fontSize: 13))),
-      ]),
     );
   }
 
-  Widget _buildEarnedBadgesStrip() {
-    // Load badges from stats — we'll use a FutureBuilder
+
+  // ── Earned badges horizontal strip ───────────────────────────
+  Widget _buildBadgesStrip() {
     return FutureBuilder<BadgesData?>(
       future: _detectionService.getBadges(),
       builder: (context, snapshot) {
@@ -1301,43 +1080,563 @@ class _ProfileScreenState extends State<ProfileScreen>
             .toList();
 
         if (earned.isEmpty) {
-          return const Text('No badges yet — start scanning!',
-              style: TextStyle(fontSize: 12,
-                  color: AppTheme.textSecondary));
+          return Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Row(children: [
+              const Icon(Icons.lock_outline,
+                  color: AppTheme.textSecondary, size: 14),
+              const SizedBox(width: 6),
+              Text('No badges yet — start scanning!',
+                  style: TextStyle(fontSize: 12,
+                      color: AppTheme.textSecondary
+                          .withValues(alpha: 0.7))),
+            ]),
+          );
         }
 
-        return Column(children: [
-          // Badge emoji row
-          Wrap(
-            spacing:   6,
-            runSpacing: 6,
-            alignment: WrapAlignment.center,
-            children: earned.map((b) => Tooltip(
-              message: b.name,
-              child: Container(
-                width: 36, height: 36,
-                decoration: BoxDecoration(
-                  color:  AppTheme.surface2,
-                  shape:  BoxShape.circle,
-                  border: Border.all(
-                      color: AppTheme.surfaceBorder),
-                ),
-                child: Center(
-                  child: Text(b.emoji,
-                      style: const TextStyle(fontSize: 18)),
-                ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 16),
+            const Divider(color: AppTheme.surfaceBorder, height: 1),
+            const SizedBox(height: 14),
+            Row(children: [
+              Text('${earned.length} earned',
+                  style: const TextStyle(fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 0.5)),
+              const Spacer(),
+            ]),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: earned.map((b) => Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Tooltip(
+                    message: b.name,
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color:        AppTheme.surface2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppTheme.accent
+                                .withValues(alpha: 0.2)),
+                      ),
+                      child: Center(
+                        child: Text(b.emoji,
+                            style: const TextStyle(fontSize: 22)),
+                      ),
+                    ),
+                  ),
+                )).toList(),
               ),
-            )).toList(),
-          ),
-          const SizedBox(height: 6),
-          Text('${earned.length} badge${earned.length == 1 ? '' : 's'} earned',
-              style: const TextStyle(fontSize: 11,
-                  color: AppTheme.textSecondary)),
-        ]);
+            ),
+          ],
+        );
       },
     );
   }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  SECURITY TAB
+  // ═══════════════════════════════════════════════════════════════
+
+  Widget _buildSecurityTab() {
+    return SingleChildScrollView(
+      // AFTER:
+      padding: EdgeInsets.only(
+        top:    20,
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ── Notifications ────────────────────────────────────
+          _buildSectionHeader('Notifications'),
+          _buildSettingsCard(children: [
+            _buildToggleRow(
+              icon:      Icons.local_fire_department_rounded,
+              iconColor: AppTheme.accent,
+              label:     'Daily Streak Reminder',
+              subtitle:  'Reminds you to scan at 8:00 PM',
+              value:     _streakNotifEnabled,
+              onChanged: (val) async {
+                setState(() => _streakNotifEnabled = val);
+                await NotificationService().setStreakNotifEnabled(val);
+              },
+            ),
+            _buildDivider(),
+            _buildToggleRow(
+              icon:      Icons.emoji_events_rounded,
+              iconColor: AppTheme.primary,
+              label:     'Badge Progress Alerts',
+              subtitle:  'Notifies when close to a new badge',
+              value:     _badgeNotifEnabled,
+              onChanged: (val) async {
+                setState(() => _badgeNotifEnabled = val);
+                await NotificationService().setBadgeNotifEnabled(val);
+              },
+            ),
+          ]),
+
+          const SizedBox(height: 20),
+
+          // ── Password ─────────────────────────────────────────
+          _buildSectionHeader('Change Password'),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.paddingL),
+            child: Container(
+              padding: const EdgeInsets.all(AppTheme.paddingL),
+              decoration: BoxDecoration(
+                color:        AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                border: Border.all(color: AppTheme.surfaceBorder),
+              ),
+              child: Form(
+                key: _passwordFormKey,
+                child: Column(children: [
+                  // Security tip
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.paddingM),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withValues(alpha: 0.07),
+                      borderRadius:
+                      BorderRadius.circular(AppTheme.radiusS),
+                      border: Border.all(
+                          color: AppTheme.primary
+                              .withValues(alpha: 0.15)),
+                    ),
+                    child: const Row(children: [
+                      Icon(Icons.shield_outlined,
+                          color: AppTheme.primary, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Use letters, numbers and symbols for a strong password.',
+                          style: TextStyle(color: AppTheme.primary,
+                              fontSize: 12, height: 1.4),
+                        ),
+                      ),
+                    ]),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  CustomTextField(
+                    label:      'Current Password',
+                    hint:       'Enter current password',
+                    controller: _currentPasswordController,
+                    icon:       Icons.lock_outline,
+                    isPassword: true,
+                    validator:  Validators.password,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Divider with label
+                  Row(children: [
+                    const Expanded(
+                        child: Divider(
+                            color: AppTheme.surfaceBorder)),
+                    Padding(
+                      padding:
+                      const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('New Password',
+                          style: TextStyle(fontSize: 11,
+                              color: AppTheme.textSecondary
+                                  .withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600)),
+                    ),
+                    const Expanded(
+                        child: Divider(
+                            color: AppTheme.surfaceBorder)),
+                  ]),
+
+                  const SizedBox(height: 14),
+
+                  CustomTextField(
+                    label:      'New Password',
+                    hint:       'Enter new password',
+                    controller: _newPasswordController,
+                    icon:       Icons.lock_outline,
+                    isPassword: true,
+                    validator:  Validators.password,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  CustomTextField(
+                    label:      'Confirm New Password',
+                    hint:       'Repeat new password',
+                    controller: _confirmPasswordController,
+                    icon:       Icons.lock_outline,
+                    isPassword: true,
+                    validator:  (v) => Validators.confirmPassword(
+                        v, _newPasswordController.text),
+                    textInputAction: TextInputAction.done,
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  if (_passwordError   != null) ...[
+                    _buildBanner(_passwordError!,   isError: true),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_passwordSuccess != null) ...[
+                    _buildBanner(_passwordSuccess!, isError: false),
+                    const SizedBox(height: 12),
+                  ],
+
+                  PrimaryButton(
+                    label:     'Update Password',
+                    onPressed: _handleUpdatePassword,
+                    isLoading: _isUpdatingPassword,
+                  ),
+                ]),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ── Danger zone ──────────────────────────────────────
+          _buildSectionHeader('Danger Zone'),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.paddingL),
+            child: Container(
+              decoration: BoxDecoration(
+                color:        AppTheme.surface,
+                borderRadius: BorderRadius.circular(AppTheme.radiusL),
+                border: Border.all(
+                    color: AppTheme.error.withValues(alpha: 0.2)),
+              ),
+              child: Column(children: [
+                _buildDangerRow(
+                  icon:      Icons.restart_alt_rounded,
+                  iconColor: AppTheme.accent,
+                  label:     'Reset Account',
+                  subtitle:  'Clears all scans, badges and streak',
+                  isLoading: _isResettingAccount,
+                  onTap:     _handleResetAccount,
+                ),
+                _buildDivider(),
+                _buildDangerRow(
+                  icon:      Icons.delete_forever_rounded,
+                  iconColor: AppTheme.error,
+                  label:     'Delete Account',
+                  subtitle:  'Permanently removes your account',
+                  isLoading: _isDeletingAccount,
+                  onTap:     _handleDeleteAccount,
+                ),
+              ]),
+            ),
+          ),
+
+          const SizedBox(height: 40),
+        ],
+      ),
+    );
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════
+  //  REUSABLE ROW COMPONENTS
+  // ═══════════════════════════════════════════════════════════════
+
+  // ── Section header label ──────────────────────────────────────
+  Widget _buildSectionHeader(String label) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+          AppTheme.paddingL, 0, AppTheme.paddingL, 10),
+      child: Text(label.toUpperCase(),
+          style: const TextStyle(fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondary,
+              letterSpacing: 1.1)),
+    );
+  }
+
+  // ── Settings card wrapper ─────────────────────────────────────
+  Widget _buildSettingsCard({required List<Widget> children}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.paddingL),
+      child: Container(
+        decoration: BoxDecoration(
+          color:        AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusL),
+          border: Border.all(color: AppTheme.surfaceBorder),
+        ),
+        child: Column(children: children),
+      ),
+    );
+  }
+
+  // ── Info display row (icon + label + value + optional trailing) ─
+  Widget _buildInfoRow({
+    required IconData icon,
+    required Color    iconColor,
+    required String   label,
+    required String   value,
+    Widget?           trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 14),
+      child: Row(children: [
+        Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color:        iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 19),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+            ],
+          ),
+        ),
+        if (trailing != null) trailing,
+      ]),
+    );
+  }
+
+  // ── Read-only row with lock icon ──────────────────────────────
+  Widget _buildReadOnlyRow({
+    required IconData icon,
+    required String   label,
+    required String   value,
+    required String   note,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 14),
+      child: Row(children: [
+        Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color: AppTheme.textSecondary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon,
+              color: AppTheme.textSecondary, size: 19),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 11,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w500)),
+              const SizedBox(height: 2),
+              Text(value,
+                  style: const TextStyle(fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              const SizedBox(height: 1),
+              Text(note,
+                  style: const TextStyle(fontSize: 11,
+                      color: AppTheme.textSecondary)),
+            ],
+          ),
+        ),
+        const Icon(Icons.lock_outline,
+            color: AppTheme.textSecondary, size: 16),
+      ]),
+    );
+  }
+
+  // ── Action row (for sign out etc) ─────────────────────────────
+  Widget _buildActionRow({
+    required IconData icon,
+    required Color    iconColor,
+    required String   label,
+    required Color    labelColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap:        onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusL),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color:        iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 19),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: labelColor)),
+          ),
+          Icon(Icons.chevron_right,
+              color: labelColor.withValues(alpha: 0.5), size: 20),
+        ]),
+      ),
+    );
+  }
+
+  // ── Toggle row (for notifications) ───────────────────────────
+  Widget _buildToggleRow({
+    required IconData  icon,
+    required Color     iconColor,
+    required String    label,
+    required String    subtitle,
+    required bool      value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 12),
+      child: Row(children: [
+        Container(
+          width: 38, height: 38,
+          decoration: BoxDecoration(
+            color:        iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: iconColor, size: 19),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary)),
+              Text(subtitle,
+                  style: const TextStyle(fontSize: 11,
+                      color: AppTheme.textSecondary)),
+            ],
+          ),
+        ),
+        Switch(
+          value:            value,
+          activeThumbColor: iconColor,
+          onChanged:        onChanged,
+        ),
+      ]),
+    );
+  }
+
+  // ── Danger zone row ───────────────────────────────────────────
+  Widget _buildDangerRow({
+    required IconData      icon,
+    required Color         iconColor,
+    required String        label,
+    required String        subtitle,
+    required bool          isLoading,
+    required VoidCallback  onTap,
+  }) {
+    return InkWell(
+      onTap:        isLoading ? null : onTap,
+      borderRadius: BorderRadius.circular(AppTheme.radiusL),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
+        child: Row(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color:        iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: isLoading
+                ? Center(
+              child: SizedBox(
+                width: 18, height: 18,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: iconColor),
+              ),
+            )
+                : Icon(icon, color: iconColor, size: 19),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: iconColor)),
+                Text(subtitle,
+                    style: const TextStyle(fontSize: 11,
+                        color: AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right,
+              color: iconColor.withValues(alpha: 0.4), size: 20),
+        ]),
+      ),
+    );
+  }
+
+  // ── Thin divider between rows ─────────────────────────────────
+  Widget _buildDivider() => const Padding(
+    padding: EdgeInsets.symmetric(horizontal: 16),
+    child: Divider(color: AppTheme.surfaceBorder, height: 1),
+  );
+
+  // ── Success / error banner ────────────────────────────────────
+  Widget _buildBanner(String message, {required bool isError}) {
+    final color = isError ? AppTheme.error : AppTheme.success;
+    return Container(
+      width:   double.infinity,
+      padding: const EdgeInsets.all(AppTheme.paddingM),
+      decoration: BoxDecoration(
+        color:        color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppTheme.radiusS),
+        border:       Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(children: [
+        Icon(isError
+            ? Icons.error_outline : Icons.check_circle_outline,
+            color: color, size: 18),
+        const SizedBox(width: 8),
+        Expanded(child: Text(message,
+            style: TextStyle(color: color, fontSize: 13))),
+      ]),
+    );
+  }
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+//  CROP PAGE — completely unchanged
+// ═══════════════════════════════════════════════════════════════
 
 class _CropPage extends StatefulWidget {
   final Uint8List imageBytes;
@@ -1366,7 +1665,8 @@ class _CropPageState extends State<_CropPage> {
     } else {
       setState(() => _isProcessing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not crop image. Please try again.'),
+        const SnackBar(
+            content: Text('Could not crop image. Please try again.'),
             backgroundColor: AppTheme.error),
       );
     }
@@ -1377,8 +1677,8 @@ class _CropPageState extends State<_CropPage> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
-        elevation: 0,
+        backgroundColor:         AppTheme.surface,
+        elevation:               0,
         automaticallyImplyLeading: false,
         leading: IconButton(
           icon: const Icon(Icons.close, color: AppTheme.textPrimary),
@@ -1390,24 +1690,29 @@ class _CropPageState extends State<_CropPage> {
         centerTitle: true,
         actions: [
           _isProcessing
-              ? const Padding(padding: EdgeInsets.all(14),
-              child: SizedBox(width: 20, height: 20,
-                  child: CircularProgressIndicator(
-                      color: AppTheme.primary, strokeWidth: 2)))
+              ? const Padding(
+            padding: EdgeInsets.all(14),
+            child: SizedBox(
+              width: 20, height: 20,
+              child: CircularProgressIndicator(
+                  color: AppTheme.primary, strokeWidth: 2),
+            ),
+          )
               : IconButton(
-            icon: const Icon(Icons.check, color: AppTheme.primary),
+            icon:     const Icon(Icons.check, color: AppTheme.primary),
             onPressed: _confirmCrop,
           ),
         ],
       ),
       body: Column(children: [
         Container(
-          width: double.infinity,
+          width:   double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 10),
-          color: AppTheme.surface,
+          color:   AppTheme.surface,
           child: const Text('Pinch to zoom  •  Drag to reposition',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              style: TextStyle(fontSize: 12,
+                  color: AppTheme.textSecondary)),
         ),
         Expanded(
           child: CustomImageCrop(
@@ -1421,19 +1726,31 @@ class _CropPageState extends State<_CropPage> {
           ),
         ),
         Container(
-          width: double.infinity,
+          width:   double.infinity,
           padding: const EdgeInsets.all(16),
-          color: AppTheme.surface,
-          child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-            _buildBottomAction(icon: Icons.rotate_left, label: 'Rotate Left',
+          color:   AppTheme.surface,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildBottomAction(
+                icon:  Icons.rotate_left,
+                label: 'Rotate Left',
                 onTap: () => _cropController.addTransition(
-                    CropImageData(angle: -90 * (3.141592 / 180)))),
-            _buildBottomAction(icon: Icons.center_focus_strong_outlined, label: 'Reset',
-                onTap: () => _cropController.reset()),
-            _buildBottomAction(icon: Icons.rotate_right, label: 'Rotate Right',
+                    CropImageData(angle: -90 * (3.141592 / 180))),
+              ),
+              _buildBottomAction(
+                icon:  Icons.center_focus_strong_outlined,
+                label: 'Reset',
+                onTap: () => _cropController.reset(),
+              ),
+              _buildBottomAction(
+                icon:  Icons.rotate_right,
+                label: 'Rotate Right',
                 onTap: () => _cropController.addTransition(
-                    CropImageData(angle: 90 * (3.141592 / 180)))),
-          ]),
+                    CropImageData(angle: 90 * (3.141592 / 180))),
+              ),
+            ],
+          ),
         ),
         SizedBox(height: MediaQuery.of(context).padding.bottom),
       ]),
@@ -1441,7 +1758,9 @@ class _CropPageState extends State<_CropPage> {
   }
 
   Widget _buildBottomAction({
-    required IconData icon, required String label, required VoidCallback onTap,
+    required IconData      icon,
+    required String        label,
+    required VoidCallback  onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -1451,15 +1770,16 @@ class _CropPageState extends State<_CropPage> {
           decoration: BoxDecoration(
             color:  AppTheme.primary.withValues(alpha: 0.12),
             shape:  BoxShape.circle,
-            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+            border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: Icon(icon, color: AppTheme.primary, size: 22),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(fontSize: 11,
-            color: AppTheme.textSecondary)),
+        Text(label,
+            style: const TextStyle(fontSize: 11,
+                color: AppTheme.textSecondary)),
       ]),
     );
   }
 }
-

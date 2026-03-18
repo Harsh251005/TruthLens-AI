@@ -520,9 +520,10 @@
                   Container(width: 1, height: 28,
                       color: AppTheme.surfaceBorder),
                   // Scanned with
+                  // AFTER:
                   _buildFooterStat(
-                    label: 'Scanned with',
-                    value: 'TruthLens AI',
+                    label: 'Analysed by',
+                    value: 'VeriNet v1.0',
                     color: AppTheme.primary,
                   ),
                 ],

@@ -12,6 +12,43 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
+
+// ── Keep-alive ping — fires every 14 minutes ──────────────────
+// Render free tier sleeps after 15 mins of inactivity
+// This prevents that by pinging the server silently in background
+class ServerKeepAlive {
+
+  static Timer? _timer;
+
+  // ── Call once in main() after app starts ──────────────────────
+  static void start() {
+    // Ping immediately on start
+    _ping();
+
+    // Then ping every 14 minutes
+    _timer = Timer.periodic(const Duration(minutes: 14), (_) => _ping());
+  }
+
+  static void stop() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  static Future<void> _ping() async {
+    try {
+      await http.get(
+        Uri.parse('${AppConstants.baseUrl}/docs'),
+      ).timeout(const Duration(seconds: 60));
+      debugPrint('✅ Server keep-alive ping successful');
+    } catch (_) {
+      // Silently ignore — server may be cold starting
+      // Next ping in 14 minutes will succeed once server is warm
+    }
+  }
+}
 
 class NotificationService {
 

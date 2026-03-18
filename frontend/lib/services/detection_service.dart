@@ -661,16 +661,40 @@ class DetectionService {
   // ── Notify only when a badge is NEWLY earned ─────────────
 // Uses SharedPreferences to track which badges have already
 // been notified — ensures each badge notification fires once.
+  // ── Notify only when a badge is NEWLY earned ──────────────────
+// Uses SharedPreferences to track which badges have already
+// been notified — ensures each badge notification fires once.
   Future<void> checkBadgeProgress() async {
     try {
       final data = await getBadges();
       if (data == null) return;
 
       final prefs       = await SharedPreferences.getInstance();
-      const notifiedKey = 'notified_badges'; // comma-separated list of badge IDs
+      const notifiedKey = 'notified_badges';
+      const seededKey   = 'badges_seeded';   // ← tracks if we've done first-run seed
 
+      // ── First run seed ─────────────────────────────────────────
+      // On first run, silently mark ALL currently earned badges as
+      // already notified — prevents firing for pre-existing badges
+      final hasSeeded = prefs.getBool(seededKey) ?? false;
+      if (!hasSeeded) {
+        final alreadyEarned = data.badges
+            .where((b) => b.earned)
+            .map((b) => b.id)
+            .toSet();
+
+        // Save all currently earned badges as already notified
+        await prefs.setString(notifiedKey, alreadyEarned.join(','));
+
+        // Mark seeding as done — this block never runs again
+        await prefs.setBool(seededKey, true);
+        return;   // Don't show any notification on this first check
+      }
+
+      // ── Normal flow — only runs after first-run seed ───────────
       // Get previously notified badge IDs
-      final notified = (prefs.getString(notifiedKey) ?? '').split(',').toSet();
+      final notified =
+      (prefs.getString(notifiedKey) ?? '').split(',').toSet();
 
       for (final badge in data.badges) {
         // Only notify if:
@@ -686,7 +710,7 @@ class DetectionService {
           // Mark as notified so it never fires again
           notified.add(badge.id);
           await prefs.setString(notifiedKey, notified.join(','));
-          break; // One notification per scan max
+          break;   // One notification per scan max
         }
       }
     } catch (_) {}

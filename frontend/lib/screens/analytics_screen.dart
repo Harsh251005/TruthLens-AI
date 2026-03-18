@@ -60,9 +60,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
-        title: const Text('My Analytics',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary)),
+        title: Row(children: [
+          const Text('My Analytics',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color:        AppTheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.2)),
+            ),
+            child: const Text('VeriNet',
+                style: TextStyle(fontSize: 10, color: AppTheme.primary,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ]),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new,
               color: AppTheme.textPrimary, size: 20),

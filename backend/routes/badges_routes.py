@@ -122,11 +122,7 @@ BADGE_CATALOGUE = [
 # ── GET /api/badges/ ──────────────────────────────────────────────
 @router.get("/", response_model=BadgesResponse)
 def get_badges(user_id: int = Depends(get_current_user)):
-    """
-    Returns all badges with earned status + progress for the user.
-    Computes everything from existing scans + users tables —
-    no separate badges table needed.
-    """
+
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
@@ -135,6 +131,7 @@ def get_badges(user_id: int = Depends(get_current_user)):
         cursor.execute(
             """SELECT
                 current_streak,
+                longest_streak,
                 (SELECT COUNT(*) FROM scans WHERE user_id = %s)
                     AS total_scans,
                 (SELECT COUNT(*) FROM scans
@@ -150,18 +147,27 @@ def get_badges(user_id: int = Depends(get_current_user)):
         if not row:
             raise HTTPException(status_code=404, detail="User not found")
 
-        total_scans    = int(row["total_scans"]  or 0)
-        total_fake     = int(row["total_fake"]   or 0)
-        total_real     = int(row["total_real"]   or 0)
-        current_streak = int(row["current_streak"] or 0)
+        total_scans     = int(row["total_scans"]     or 0)
+        total_fake      = int(row["total_fake"]      or 0)
+        total_real      = int(row["total_real"]      or 0)
+        current_streak  = int(row["current_streak"]  or 0)
+        longest_streak  = int(row["longest_streak"]  or 0)
 
-        # ── Compute badges ────────────────────────────────────
-        badges = []
+        # ── Fetch permanently earned badges ───────────────────
+        cursor.execute(
+            "SELECT badge_id FROM earned_badges WHERE user_id = %s",
+            (user_id,)
+        )
+        permanently_earned = {r["badge_id"] for r in cursor.fetchall()}
+
+        # ── Compute badges + persist newly earned ones ────────
+        badges       = []
+        new_earnings = []
+
         for b in BADGE_CATALOGUE:
             category = b["category"]
             target   = b["target"]
 
-            # Pick the right progress value per category
             if category == "scans":
                 progress = total_scans
             elif category == "fakes":
@@ -169,20 +175,43 @@ def get_badges(user_id: int = Depends(get_current_user)):
             elif category == "real":
                 progress = total_real
             elif category == "streak":
-                progress = current_streak
+                # Use longest_streak so badge stays earned after reset
+                progress = longest_streak
             else:
                 progress = 0
+
+            is_earned = progress >= target or b["id"] in permanently_earned
+
+            # Track newly earned badges to persist
+            if is_earned and b["id"] not in permanently_earned:
+                new_earnings.append(b["id"])
 
             badges.append(BadgeItem(
                 id          = b["id"],
                 name        = b["name"],
                 description = b["description"],
                 emoji       = b["emoji"],
-                earned      = progress >= target,
-                progress    = min(progress, target),  # Cap at target
+                earned      = is_earned,
+                # Show current_streak for progress bar on streak badges
+                progress    = min(
+                    current_streak if category == "streak" else progress,
+                    target
+                ),
                 target      = target,
                 category    = category,
             ))
+
+        # ── Persist any newly earned badges ───────────────────
+        for badge_id in new_earnings:
+            try:
+                cursor.execute(
+                    """INSERT IGNORE INTO earned_badges (user_id, badge_id)
+                       VALUES (%s, %s)""",
+                    (user_id, badge_id)
+                )
+            except Exception:
+                pass
+        conn.commit()
 
         earned_count = sum(1 for b in badges if b.earned)
 
@@ -191,7 +220,7 @@ def get_badges(user_id: int = Depends(get_current_user)):
             earned_count   = earned_count,
             total_count    = len(badges),
             current_streak = current_streak,
-            longest_streak = current_streak,  # Extend later if needed
+            longest_streak = longest_streak,
         )
 
     except HTTPException:

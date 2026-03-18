@@ -302,9 +302,24 @@ class _ChallengeScreenState extends State<ChallengeScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
-        title: const Text('Challenge Mode',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
-                color: AppTheme.textPrimary)),
+        title: Row(children: [
+          const Text('Challenge Mode',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary)),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color:        AppTheme.error.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppTheme.error.withValues(alpha: 0.2)),
+            ),
+            child: const Text('BETA',
+                style: TextStyle(fontSize: 9, color: AppTheme.error,
+                    fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+          ),
+        ]),
         leading: IconButton(
           icon: const Icon(Icons.close, color: AppTheme.textPrimary),
           onPressed: () => Navigator.of(context).pop(),

@@ -225,6 +225,19 @@ class _BadgesScreenState extends State<BadgesScreen>
                 style: const TextStyle(
                     fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
               ),
+              if (_data!.longestStreak > 0) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  const Icon(Icons.emoji_events_outlined,
+                      color: AppTheme.textSecondary, size: 13),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Best streak: ${_data!.longestStreak} day${_data!.longestStreak == 1 ? '' : 's'}',
+                    style: const TextStyle(fontSize: 12,
+                        color: AppTheme.textSecondary),
+                  ),
+                ]),
+              ],
               if (isOnStreak) ...[
                 const SizedBox(height: 10),
                 // Mini streak progress to next badge

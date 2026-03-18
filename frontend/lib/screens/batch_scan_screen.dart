@@ -13,6 +13,8 @@ import 'package:image_picker/image_picker.dart';
 import '../services/hybrid_detection_service.dart';
 import '../services/notification_service.dart';
 import '../utils/app_theme.dart';
+import '../services/detection_service.dart';
+import '../screens/result_screen.dart';
 
 // ── Per-image scan state ──────────────────────────────────────────
 enum ImageScanState { pending, scanning, done, error }
@@ -23,6 +25,7 @@ class BatchImageItem {
   String?              verdict;     // 'REAL' or 'FAKE'
   double?              confidence;
   String?              errorMessage;
+  DetectionResult?       result;       // ← full result stored here
 
   BatchImageItem({required this.file})
       : state = ImageScanState.pending;
@@ -136,10 +139,12 @@ class _BatchScanScreenState extends State<BatchScanScreen>
         if (_isCancelled) break;
 
         setState(() {
+          // AFTER:
           if (response.success && response.result != null) {
             _items[i].state      = ImageScanState.done;
             _items[i].verdict    = response.result!.verdict;
             _items[i].confidence = response.result!.confidence;
+            _items[i].result     = response.result;
           } else {
             _items[i].state        = ImageScanState.error;
             _items[i].errorMessage = response.message;
@@ -171,12 +176,6 @@ class _BatchScanScreenState extends State<BatchScanScreen>
         realCount:  realCount,
         fakeCount:  fakeCount,
       );
-
-      // After notification fires — clear grid for fresh start
-      if (!_isCancelled && mounted) {
-        await Future.delayed(const Duration(seconds: 2));
-        if (mounted) setState(() => _items = []);
-      }
 
       HapticFeedback.heavyImpact();
 
@@ -456,6 +455,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
 
 
   // ── Single image tile ─────────────────────────────────────────
+  // ── Single image tile ─────────────────────────────────────────
   Widget _buildImageTile(BatchImageItem item, int index) {
     final isCurrentlyScan = _isScanning &&
         item.state == ImageScanState.scanning;
@@ -480,68 +480,114 @@ class _BatchScanScreenState extends State<BatchScanScreen>
         borderColor = AppTheme.surfaceBorder;
     }
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Image
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTheme.radiusM),
-            border:       Border.all(
-                color: borderColor, width: isCurrentlyScan ? 2 : 1),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppTheme.radiusM - 1),
-            child: Image.file(
-              item.file,
-              fit:    BoxFit.cover,
-              width:  double.infinity,
-              height: double.infinity,
-            ),
-          ),
-        ),
-
-        // Scanning spinner overlay
-        if (isCurrentlyScan)
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                color:        Colors.black45,
-                borderRadius: BorderRadius.circular(AppTheme.radiusM),
-              ),
-              child: const Center(
-                child: CircularProgressIndicator(
-                    color: AppTheme.primary, strokeWidth: 2),
+    return GestureDetector(
+      onTap: () {
+        // Only open detail view if scan is done and result exists
+        if (item.state == ImageScanState.done && item.result != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ResultScreen(
+                result: item.result!,
+                imagePath: item.file.path,
               ),
             ),
-          ),
-
-        // Verdict badge
-        if (badge != null)
-          Positioned(bottom: 0, left: 0, right: 0,
-              child: badge),
-
-        // Index number
-        Positioned(
-          top: 4, left: 4,
-          child: Container(
-            width: 20, height: 20,
+          );
+        }
+      },
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Image
+          Container(
             decoration: BoxDecoration(
-              color:  Colors.black54,
-              shape:  BoxShape.circle,
+              borderRadius: BorderRadius.circular(AppTheme.radiusM),
+              border: Border.all(
+                color: borderColor,
+                width: isCurrentlyScan ? 2 : 1,
+              ),
             ),
-            child: Center(
-              child: Text('${index + 1}',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 9,
-                      fontWeight: FontWeight.w800)),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.radiusM - 1),
+              child: Image.file(
+                item.file,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+              ),
             ),
           ),
-        ),
-      ],
+
+          // Scanning spinner overlay
+          if (isCurrentlyScan)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM),
+                ),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primary,
+                    strokeWidth: 2,
+                  ),
+                ),
+              ),
+            ),
+
+          // Verdict badge
+          if (badge != null)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: badge,
+            ),
+
+          // Index number
+          Positioned(
+            top: 4,
+            left: 4,
+            child: Container(
+              width: 20,
+              height: 20,
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Tap hint info icon
+          if (item.state == ImageScanState.done)
+            Positioned(
+              top: 4, right: 4,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color:  Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(
+                  Icons.info_outline_rounded,
+                  color: Colors.white,
+                  size:  10,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
-
 
   // ── Verdict badge on image ────────────────────────────────────
   Widget _buildVerdictBadge(BatchImageItem item) {

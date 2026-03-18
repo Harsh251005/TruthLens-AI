@@ -247,7 +247,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen> {
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         backgroundColor: AppTheme.surface,
-        title: const Text('Deepfake News',
+        title: const Text('News Tracker',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary)),
         leading: IconButton(

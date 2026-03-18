@@ -181,8 +181,9 @@ class AboutScreen extends StatelessWidget {
   // ── Technology ────────────────────────────────────────────────
   Widget _buildTechnology() {
     final techs = [
-      (Icons.memory_rounded,        AppTheme.primary, 'EfficientNetB0',
-      'State-of-the-art deep learning model fine-tuned for deepfake detection.'),
+      // AFTER:
+      (Icons.memory_rounded, AppTheme.primary, 'VeriNet v1.0 (EfficientNetB0)',
+      'Proprietary deep learning model fine-tuned for deepfake detection. Trained on 140K+ real and synthetic face images.'),
       (Icons.face_retouching_natural_rounded, AppTheme.accent, 'OpenCV Face Detection',
       'Haar Cascade classifier ensures only valid face images are analysed.'),
       (Icons.cloud_rounded,         AppTheme.success, 'FastAPI Backend',
@@ -291,20 +292,45 @@ class AboutScreen extends StatelessWidget {
   // ── Version Card ──────────────────────────────────────────────
   Widget _buildVersionCard() {
     return Container(
-      width: double.infinity,
+      width:   double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(),
-      child: const Column(
+      child: Column(
         children: [
-          Text('TruthLens AI', style: TextStyle(
-              fontSize: 16, fontWeight: FontWeight.w700,
-              color: AppTheme.textPrimary)),
-          SizedBox(height: 4),
-          Text('Version 1.0.0', style: TextStyle(
-              fontSize: 13, color: AppTheme.textSecondary)),
-          SizedBox(height: 4),
-          Text('Built with Flutter & FastAPI',
-              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          RichText(
+            text: const TextSpan(children: [
+              TextSpan(text: 'Truth',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimary)),
+              TextSpan(text: 'Lens',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                      color: AppTheme.primary)),
+              TextSpan(text: ' AI',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                      color: AppTheme.accent)),
+            ]),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color:        AppTheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.2)),
+            ),
+            child: const Text('Powered by VeriNet v1.0',
+                style: TextStyle(fontSize: 12, color: AppTheme.primary,
+                    fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(height: 8),
+          const Text('Version 1.0.0',
+              style: TextStyle(fontSize: 13,
+                  color: AppTheme.textSecondary)),
+          const SizedBox(height: 2),
+          const Text('Flutter  •  FastAPI  •  EfficientNetB0',
+              style: TextStyle(fontSize: 12,
+                  color: AppTheme.textSecondary)),
         ],
       ),
     );
