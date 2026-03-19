@@ -568,7 +568,7 @@ class _ArticleCard extends StatelessWidget {
                   article.imageUrl!,
                   height: 155, width: double.infinity,
                   fit:    BoxFit.cover,
-                  errorBuilder:   (_, __, ___) => const SizedBox.shrink(),
+                  errorBuilder:   (_, _, _) => const SizedBox.shrink(),
                   loadingBuilder: (_, child, progress) {
                     if (progress == null) return child;
                     return Container(
@@ -631,7 +631,7 @@ class _ArticleCard extends StatelessWidget {
               ),
             ),
           ],
-        ),  
+        ),
       ),
     );
   }

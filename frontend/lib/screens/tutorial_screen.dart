@@ -4,7 +4,7 @@
 //   1. Accepts required `user` UserModel param
 //   2. _onGetStarted() pushes HomeScreen(user: widget.user)
 //      instead of a named route
-//   3. FIXED: typo 'TututhorialScreen' → 'TutorialScreen'
+//   3. FIXED: typo 'TutorialScreen' → 'TutorialScreen'
 //      (this was causing a compile error → broken nav stack)
 // ============================================================
 
@@ -72,8 +72,8 @@ class _TutorialScreenState extends State<TutorialScreen>
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, __, ___) => HomeScreen(user: widget.user),
-        transitionsBuilder: (_, animation, __, child) =>
+        pageBuilder: (_, _, _) => HomeScreen(user: widget.user),
+        transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 400),
       ),
@@ -158,9 +158,9 @@ class _SlideContent extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color:        slide.accentColor.withOpacity(0.15),
+                color:        slide.accentColor.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(20),
-                border:       Border.all(color: slide.accentColor.withOpacity(0.4)),
+                border:       Border.all(color: slide.accentColor.withValues(alpha: 0.4)),
               ),
               child: Text(slide.tag,
                   style: TextStyle(
@@ -217,7 +217,7 @@ class _IconIllustration extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: RadialGradient(colors: [
-                slide.accentColor.withOpacity(0.18), Colors.transparent,
+                slide.accentColor.withValues(alpha: 0.18), Colors.transparent,
               ]),
             ),
           ),
@@ -227,9 +227,9 @@ class _IconIllustration extends StatelessWidget {
               shape:    BoxShape.circle,
               color:    AppTheme.surface2,
               border:   Border.all(
-                  color: slide.accentColor.withOpacity(0.25), width: 1.5),
+                  color: slide.accentColor.withValues(alpha: 0.25), width: 1.5),
               boxShadow: [
-                BoxShadow(color: slide.accentColor.withOpacity(0.2),
+                BoxShadow(color: slide.accentColor.withValues(alpha: 0.2),
                     blurRadius: 32, spreadRadius: 4),
               ],
             ),
@@ -269,7 +269,7 @@ class _BottomControls extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [AppTheme.background.withOpacity(0.0), AppTheme.background],
+          colors: [AppTheme.background.withValues(alpha: 0.0), AppTheme.background],
         ),
       ),
       child: Column(
@@ -284,12 +284,12 @@ class _BottomControls extends StatelessWidget {
               width: double.infinity, height: 56,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [accentColor, accentColor.withOpacity(0.75)],
+                  colors: [accentColor, accentColor.withValues(alpha: 0.75)],
                   begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(AppTheme.radiusL),
                 boxShadow: [
-                  BoxShadow(color: accentColor.withOpacity(0.35),
+                  BoxShadow(color: accentColor.withValues(alpha: 0.35),
                       blurRadius: 20, offset: const Offset(0, 6)),
                 ],
               ),
@@ -366,7 +366,7 @@ class _BackgroundMesh extends StatelessWidget {
         gradient: RadialGradient(
           center: const Alignment(-0.5, -0.8),
           radius: 1.2,
-          colors: [color.withOpacity(0.08), AppTheme.background],
+          colors: [color.withValues(alpha: 0.08), AppTheme.background],
         ),
       ),
     );

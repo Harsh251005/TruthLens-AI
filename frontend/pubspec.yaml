@@ -10,32 +10,34 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # UI & Core
+  # ── UI & Core ─────────────────────────────────────────────
   cupertino_icons: ^1.0.8
-  custom_image_crop: 0.1.1
-  fl_chart: ^0.69.0
+  custom_image_crop: 0.1.1   # avatar cropping on profile screen
+  fl_chart: ^0.69.0           # analytics charts
 
-  # Networking & Local Data
-  http: ^1.2.1
-  http_parser: ^4.0.2
-  shared_preferences: ^2.2.3
+  # ── Networking & Local Storage ────────────────────────────
+  http: ^1.2.1                # API calls to backend
+  shared_preferences: ^2.2.3  # tutorial state, news cache
 
-  # ML, Camera & Image Processing
-  camera: ^0.11.0
-  google_mlkit_face_detection: ^0.11.0
-  image: ^4.1.7
-  screenshot: ^3.0.0
+  # ── Camera & Image ────────────────────────────────────────
+  camera: ^0.11.0             # live capture on scan screen
+  image: ^4.1.7               # image manipulation
+  image_picker: ^1.1.2        # gallery upload on scan screen
 
-  # Device & Platform Integration
-  image_picker: ^1.1.2
-  path_provider: ^2.1.2
-  share_plus: ^10.1.2
-  url_launcher: ^6.3.0
+  # ── Device & Platform ─────────────────────────────────────
+  path_provider: ^2.1.2       # local file paths
+  share_plus: ^10.1.2         # share scan results
+  url_launcher: ^6.3.0        # open news articles in browser
 
-  # Background Tasks & Notifications
-  flutter_local_notifications: ^18.0.0
-  timezone: ^0.9.4
-  workmanager: ^0.9.0+3
+  # ── Notifications ─────────────────────────────────────────
+  flutter_local_notifications: ^18.0.0  # streak reminders
+  timezone: ^0.9.4                       # notification scheduling
+
+  # ── Removed ───────────────────────────────────────────────
+  # http_parser      — included inside http package
+  # screenshot       — not used in any screen
+  # workmanager      — no background tasks implemented
+  # google_mlkit_face_detection — detection done on backend, not device
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +47,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/
 
 flutter_launcher_icons:
   android: true

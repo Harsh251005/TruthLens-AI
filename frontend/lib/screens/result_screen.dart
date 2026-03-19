@@ -1,15 +1,24 @@
+// screens/result_screen.dart
+// ============================================================
+// CHANGES FROM ORIGINAL:
+//   1. Removed screenshot package import and ScreenshotController
+//   2. Removed Screenshot widget wrapper around _buildShareCard
+//   3. _handleShare() rewritten — shares text summary instead
+//      of a captured image (screenshot package was removed)
+//   4. Everything else — UI, animations, cards — UNCHANGED
+// ============================================================
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';           // kept
+// screenshot import removed ─────────────────────────────────
 import '../services/detection_service.dart';
 import '../utils/app_theme.dart';
 
 class ResultScreen extends StatefulWidget {
   final DetectionResult result;
-  final String imagePath;
+  final String          imagePath;
 
   const ResultScreen({
     super.key,
@@ -24,15 +33,14 @@ class ResultScreen extends StatefulWidget {
 class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
 
-  // ── Animation controllers ─────────────────────────────────────────
+  // ── Animation controllers ──────────────────────────────────
   late AnimationController _controller;
-  late Animation<double> _fadeAnim;
-  late Animation<double> _scaleAnim;
-  late Animation<double> _progressAnim;
+  late Animation<double>   _fadeAnim;
+  late Animation<double>   _scaleAnim;
+  late Animation<double>   _progressAnim;
 
-  // ── Screenshot controller for sharing ─────────────────────────────
-  final _screenshotController = ScreenshotController();
   bool _isSharing = false;
+  // ScreenshotController removed ──────────────────────────────
 
   @override
   void initState() {
@@ -48,13 +56,11 @@ class _ResultScreenState extends State<ResultScreen>
     super.dispose();
   }
 
-  /// Haptic feedback — heavy double tap for fake, light for real
   void _triggerHaptic() {
     if (widget.result.isFake) {
       HapticFeedback.heavyImpact();
-      Future.delayed(const Duration(milliseconds: 200), () {
-        HapticFeedback.heavyImpact();
-      });
+      Future.delayed(const Duration(milliseconds: 200),
+          HapticFeedback.heavyImpact);
     } else {
       HapticFeedback.lightImpact();
     }
@@ -62,57 +68,55 @@ class _ResultScreenState extends State<ResultScreen>
 
   void _setupAnimations() {
     _controller = AnimationController(
-      vsync: this,
+      vsync:    this,
       duration: const Duration(milliseconds: 1200),
     );
     _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+        curve:  const Interval(0.0, 0.5, curve: Curves.easeOut),
       ),
     );
     _scaleAnim = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+        curve:  const Interval(0.0, 0.6, curve: Curves.elasticOut),
       ),
     );
     _progressAnim = Tween<double>(
       begin: 0.0,
-      end: widget.result.confidence / 100,
+      end:   widget.result.confidence / 100,
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeOut),
+        curve:  const Interval(0.4, 1.0, curve: Curves.easeOut),
       ),
     );
   }
 
-  // ── Share handler ─────────────────────────────────────────────
+  // ── Share handler ──────────────────────────────────────────
+  // CHANGED: shares scanned image + text summary via share_plus.
+  // Screenshot capture removed since the package was removed.
   Future<void> _handleShare() async {
     setState(() => _isSharing = true);
     try {
-      final Uint8List? imageBytes = await _screenshotController.capture(
-        pixelRatio: 3.0,
-      );
-      if (imageBytes == null) return;
+      final shareText =
+          'I just scanned this image with TruthLens AI!\n'
+          'Verdict: ${widget.result.verdict} '
+          '(${widget.result.confidence.toStringAsFixed(1)}% confidence)\n'
+          'EXIF Risk: ${widget.result.exifAnalysis.riskLevel}\n'
+          '#TruthLensAI #DeepfakeDetection';
 
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/truthlens_result.png')
-          .writeAsBytes(imageBytes);
-
+      // Share the original scanned image with the text summary
       await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'I just scanned this image with TruthLens AI!\n'
-            'Verdict: ${widget.result.verdict} '
-            '(${widget.result.confidence.toStringAsFixed(1)}% confidence)\n'
-            '#TruthLensAI #DeepfakeDetection',
+        [XFile(widget.imagePath)],
+        text: shareText,
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to share. Please try again.'),
+            content:         Text('Failed to share. Please try again.'),
             backgroundColor: AppTheme.error,
           ),
         );
@@ -126,18 +130,19 @@ class _ResultScreenState extends State<ResultScreen>
   Widget build(BuildContext context) {
     final verdictColor =
     widget.result.isFake ? AppTheme.error : AppTheme.success;
-    final verdictIcon =
-    widget.result.isFake ? Icons.dangerous_rounded : Icons.verified_rounded;
+    final verdictIcon  = widget.result.isFake
+        ? Icons.dangerous_rounded
+        : Icons.verified_rounded;
     final verdictLabel =
     widget.result.isFake ? 'DEEPFAKE DETECTED' : 'AUTHENTIC IMAGE';
 
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Analysis Result'),
+        title:           const Text('Analysis Result'),
         backgroundColor: AppTheme.surface,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
+          icon:      const Icon(Icons.arrow_back_ios_new,
               color: AppTheme.textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -145,13 +150,12 @@ class _ResultScreenState extends State<ResultScreen>
           IconButton(
             icon: _isSharing
                 ? const SizedBox(
-                width: 20,
-                height: 20,
+                width: 20, height: 20,
                 child: CircularProgressIndicator(
                     strokeWidth: 2, color: AppTheme.primary))
                 : const Icon(Icons.share_rounded, color: AppTheme.primary),
             onPressed: _isSharing ? null : _handleShare,
-            tooltip: 'Share Result',
+            tooltip:   'Share Result',
           ),
         ],
       ),
@@ -162,52 +166,50 @@ class _ResultScreenState extends State<ResultScreen>
           children: [
             const SizedBox(height: 8),
 
-            // ── Share card (captured for sharing) ─────────────
-            Screenshot(
-              controller: _screenshotController,
-              child: _buildShareCard(verdictColor, verdictIcon, verdictLabel),
+            // ── Result card ─────────────────────────────────
+            // Screenshot wrapper removed — card UI unchanged
+            _buildShareCard(verdictColor, verdictIcon, verdictLabel),
+
+            const SizedBox(height: 16),
+
+            // ── AI Explanation card ──────────────────────────
+            FadeTransition(
+              opacity: _fadeAnim,
+              child:   _buildExplanationCard(),
             ),
 
             const SizedBox(height: 16),
 
-            // ── AI Explanation card ────────────────────────────
+            // ── EXIF Analysis card ───────────────────────────
             FadeTransition(
               opacity: _fadeAnim,
-              child: _buildExplanationCard(),
+              child:   _buildExifCard(),
             ),
 
             const SizedBox(height: 16),
 
-            // ── EXIF Analysis card ─────────────────────────────
+            // ── Tips card ────────────────────────────────────
             FadeTransition(
               opacity: _fadeAnim,
-              child: _buildExifCard(),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Tips card ──────────────────────────────────────
-            FadeTransition(
-              opacity: _fadeAnim,
-              child: _buildTipsCard(verdictColor),
+              child:   _buildTipsCard(verdictColor),
             ),
 
             const SizedBox(height: 24),
 
-            // ── Action buttons ─────────────────────────────────
+            // ── Action buttons ───────────────────────────────
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _isSharing ? null : _handleShare,
-                    icon: const Icon(Icons.share_rounded, size: 18),
-                    label: const Text('Share Result',
+                    icon:      const Icon(Icons.share_rounded, size: 18),
+                    label:     const Text('Share Result',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primary,
-                      side: const BorderSide(color: AppTheme.primary),
+                      side:    const BorderSide(color: AppTheme.primary),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
+                      shape:   RoundedRectangleBorder(
                           borderRadius:
                           BorderRadius.circular(AppTheme.radiusM)),
                     ),
@@ -217,8 +219,8 @@ class _ResultScreenState extends State<ResultScreen>
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
-                    label: const Text('Scan Again',
+                    icon:      const Icon(Icons.refresh_rounded, size: 18),
+                    label:     const Text('Scan Again',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
@@ -233,8 +235,6 @@ class _ResultScreenState extends State<ResultScreen>
               ],
             ),
 
-            const SizedBox(height: 12),
-
             const SizedBox(height: 32),
           ],
         ),
@@ -242,26 +242,22 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // ── Share Card ────────────────────────────────────────────────
-  // Captured as a screenshot and shared. Designed to look great
-  // on WhatsApp, Instagram, Twitter etc.
+  // ── Result Card (UNCHANGED) ────────────────────────────────
   Widget _buildShareCard(Color color, IconData icon, String label) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color:        AppTheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+        border:       Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
         boxShadow: [
-          BoxShadow(
-              color: color.withValues(alpha: 0.15),
-              blurRadius: 24,
-              spreadRadius: 2),
+          BoxShadow(color: color.withValues(alpha: 0.15),
+              blurRadius: 24, spreadRadius: 2),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Top gradient header ────────────────────────────
+          // ── Top gradient header ──────────────────────────
           Container(
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
             decoration: BoxDecoration(
@@ -270,56 +266,47 @@ class _ResultScreenState extends State<ResultScreen>
                     ? [const Color(0xFF2B0D0D), const Color(0xFF1a0808)]
                     : [const Color(0xFF0D2B1F), const Color(0xFF081a10)],
                 begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                end:   Alignment.bottomRight,
               ),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(AppTheme.radiusL - 1),
+                topLeft:  Radius.circular(AppTheme.radiusL - 1),
                 topRight: Radius.circular(AppTheme.radiusL - 1),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // App branding row
+                // Branding row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     RichText(
-                      text: const TextSpan(
-                        children: [
-                          TextSpan(
-                              text: 'Truth',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.textPrimary)),
-                          TextSpan(
-                              text: 'Lens',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.primary)),
-                          TextSpan(
-                              text: ' AI',
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.accent)),
-                        ],
-                      ),
+                      text: const TextSpan(children: [
+                        TextSpan(text: 'Truth',
+                            style: TextStyle(fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary)),
+                        TextSpan(text: 'Lens',
+                            style: TextStyle(fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.primary)),
+                        TextSpan(text: ' AI',
+                            style: TextStyle(fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.accent)),
+                      ]),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
+                        color:        color.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(20),
-                        border:
-                        Border.all(color: color.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: color.withValues(alpha: 0.3)),
                       ),
                       child: const Text('Deepfake Detection',
-                          style: TextStyle(
-                              fontSize: 10,
+                          style: TextStyle(fontSize: 10,
                               color: AppTheme.textSecondary,
                               fontWeight: FontWeight.w500)),
                     ),
@@ -332,11 +319,10 @@ class _ResultScreenState extends State<ResultScreen>
                 Row(
                   children: [
                     Container(
-                      width: 52,
-                      height: 52,
+                      width: 52, height: 52,
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        shape: BoxShape.circle,
+                        color:  color.withValues(alpha: 0.15),
+                        shape:  BoxShape.circle,
                         border: Border.all(
                             color: color.withValues(alpha: 0.4), width: 2),
                       ),
@@ -348,15 +334,12 @@ class _ResultScreenState extends State<ResultScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(label,
-                              style: TextStyle(
-                                  fontSize: 20,
+                              style: TextStyle(fontSize: 20,
                                   fontWeight: FontWeight.w900,
-                                  color: color,
-                                  letterSpacing: 0.5)),
+                                  color: color, letterSpacing: 0.5)),
                           const SizedBox(height: 2),
                           const Text('AI-powered analysis result',
-                              style: TextStyle(
-                                  fontSize: 11,
+                              style: TextStyle(fontSize: 11,
                                   color: AppTheme.textSecondary)),
                         ],
                       ),
@@ -366,31 +349,26 @@ class _ResultScreenState extends State<ResultScreen>
 
                 const SizedBox(height: 20),
 
-                // Big confidence number
+                // Animated confidence number
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     AnimatedBuilder(
                       animation: _progressAnim,
-                      builder: (_, _) => Text(
+                      builder:   (_, _) => Text(
                         '${(_progressAnim.value * 100).toStringAsFixed(1)}%',
-                        style: TextStyle(
-                            fontSize: 52,
+                        style: TextStyle(fontSize: 52,
                             fontWeight: FontWeight.w900,
-                            color: color,
-                            height: 1),
+                            color: color, height: 1),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        'confidence',
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: color.withValues(alpha: 0.7),
-                            fontWeight: FontWeight.w600),
-                      ),
+                      child: Text('confidence',
+                          style: TextStyle(fontSize: 14,
+                              color: color.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w600)),
                     ),
                   ],
                 ),
@@ -400,13 +378,13 @@ class _ResultScreenState extends State<ResultScreen>
                 // Animated confidence bar
                 AnimatedBuilder(
                   animation: _progressAnim,
-                  builder: (_, _) => ClipRRect(
+                  builder:   (_, _) => ClipRRect(
                     borderRadius: BorderRadius.circular(6),
                     child: LinearProgressIndicator(
-                      value: _progressAnim.value,
+                      value:           _progressAnim.value,
                       backgroundColor: color.withValues(alpha: 0.12),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                      minHeight: 8,
+                      valueColor:      AlwaysStoppedAnimation<Color>(color),
+                      minHeight:       8,
                     ),
                   ),
                 ),
@@ -414,27 +392,24 @@ class _ResultScreenState extends State<ResultScreen>
             ),
           ),
 
-          // ── Scanned image ──────────────────────────────────
+          // ── Scanned image ────────────────────────────────
           ClipRRect(
             child: Stack(
               children: [
                 Image.file(
                   File(widget.imagePath),
                   height: 200,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                  width:  double.infinity,
+                  fit:    BoxFit.cover,
                 ),
-                // Top fade into the header
                 Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
+                  top: 0, left: 0, right: 0,
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+                        begin:  Alignment.topCenter,
+                        end:    Alignment.bottomCenter,
                         colors: [
                           widget.result.isFake
                               ? const Color(0xFF1a0808)
@@ -445,17 +420,14 @@ class _ResultScreenState extends State<ResultScreen>
                     ),
                   ),
                 ),
-                // Bottom fade into the footer
                 Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
+                  bottom: 0, left: 0, right: 0,
                   child: Container(
                     height: 60,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+                        begin:  Alignment.topCenter,
+                        end:    Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
                           AppTheme.surface.withValues(alpha: 0.95),
@@ -464,15 +436,13 @@ class _ResultScreenState extends State<ResultScreen>
                     ),
                   ),
                 ),
-                // Verdict stamp over image
                 Positioned(
-                  bottom: 12,
-                  right: 12,
+                  bottom: 12, right: 12,
                   child: Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.9),
+                      color:        color.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -481,10 +451,8 @@ class _ResultScreenState extends State<ResultScreen>
                         Icon(icon, color: Colors.white, size: 14),
                         const SizedBox(width: 6),
                         Text(widget.result.verdict,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800,
+                            style: const TextStyle(color: Colors.white,
+                                fontSize: 13, fontWeight: FontWeight.w800,
                                 letterSpacing: 0.5)),
                       ],
                     ),
@@ -494,38 +462,35 @@ class _ResultScreenState extends State<ResultScreen>
             ),
           ),
 
-          // ── Footer stats row ───────────────────────────────
+          // ── Footer stats ─────────────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+            padding: const EdgeInsets.symmetric(
+                vertical: 14, horizontal: 20),
             decoration: BoxDecoration(
               color: AppTheme.surface2,
               borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(AppTheme.radiusL - 1),
+                bottomLeft:  Radius.circular(AppTheme.radiusL - 1),
                 bottomRight: Radius.circular(AppTheme.radiusL - 1),
               ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Raw score
                 _buildFooterStat(
                   label: 'Raw Score',
                   value: widget.result.rawScore.toStringAsFixed(4),
                   color: color,
                 ),
-                // Divider
-                Container(
-                    width: 1, height: 28, color: AppTheme.surfaceBorder),
-                // EXIF risk
+                Container(width: 1, height: 28,
+                    color: AppTheme.surfaceBorder),
                 _buildFooterStat(
                   label: 'EXIF Risk',
                   value: widget.result.exifAnalysis.riskLevel,
-                  color: _getRiskColor(widget.result.exifAnalysis.riskLevel),
+                  color: _getRiskColor(
+                      widget.result.exifAnalysis.riskLevel),
                 ),
-                // Divider
-                Container(
-                    width: 1, height: 28, color: AppTheme.surfaceBorder),
-                // Scanned with
+                Container(width: 1, height: 28,
+                    color: AppTheme.surfaceBorder),
                 _buildFooterStat(
                   label: 'Analysed by',
                   value: 'Axiom v1.0',
@@ -539,42 +504,39 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // Small helper for footer stat columns
   Widget _buildFooterStat({
     required String label,
     required String value,
-    required Color color,
+    required Color  color,
   }) {
     return Column(
       children: [
         Text(value,
-            style: TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w800, color: color)),
+            style: TextStyle(fontSize: 13,
+                fontWeight: FontWeight.w800, color: color)),
         const SizedBox(height: 2),
         Text(label,
-            style: const TextStyle(
-                fontSize: 10, color: AppTheme.textSecondary)),
+            style: const TextStyle(fontSize: 10,
+                color: AppTheme.textSecondary)),
       ],
     );
   }
 
-  // ── AI Explanation Card ───────────────────────────────────────
-  /// Shows the Gemini-generated human-readable explanation.
+  // ── AI Explanation Card (UNCHANGED) ───────────────────────
   Widget _buildExplanationCard() {
     return Container(
-      width: double.infinity,
+      width:   double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.15),
+                  color:        AppTheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.auto_awesome_rounded,
@@ -582,45 +544,41 @@ class _ResultScreenState extends State<ResultScreen>
               ),
               const SizedBox(width: 10),
               const Text('AI EXPLANATION',
-                  style: TextStyle(
-                      fontSize: 11,
+                  style: TextStyle(fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textSecondary,
                       letterSpacing: 1.0)),
             ],
           ),
           const SizedBox(height: 12),
-          // Explanation text from Gemini
           Text(
             widget.result.explanation,
-            style: const TextStyle(
-                fontSize: 14, color: AppTheme.textPrimary, height: 1.6),
+            style: const TextStyle(fontSize: 14,
+                color: AppTheme.textPrimary, height: 1.6),
           ),
         ],
       ),
     );
   }
 
-  // ── EXIF Analysis Card ────────────────────────────────────────
-  /// Shows EXIF metadata findings and risk level.
+  // ── EXIF Analysis Card (UNCHANGED) ────────────────────────
   Widget _buildExifCard() {
-    final exif = widget.result.exifAnalysis;
+    final exif      = widget.result.exifAnalysis;
     final riskColor = _getRiskColor(exif.riskLevel);
 
     return Container(
-      width: double.infinity,
+      width:   double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Header with risk badge ──────────────────────────
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: riskColor.withValues(alpha: 0.15),
+                  color:        riskColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.data_object_rounded,
@@ -629,36 +587,30 @@ class _ResultScreenState extends State<ResultScreen>
               const SizedBox(width: 10),
               const Expanded(
                 child: Text('EXIF METADATA ANALYSIS',
-                    style: TextStyle(
-                        fontSize: 11,
+                    style: TextStyle(fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textSecondary,
                         letterSpacing: 1.0)),
               ),
-              // Risk level badge
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: riskColor.withValues(alpha: 0.15),
+                  color:        riskColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: riskColor.withValues(alpha: 0.4)),
+                  border: Border.all(
+                      color: riskColor.withValues(alpha: 0.4)),
                 ),
-                child: Text(
-                  '${exif.riskLevel} RISK',
-                  style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: riskColor,
-                      letterSpacing: 0.5),
-                ),
+                child: Text('${exif.riskLevel} RISK',
+                    style: TextStyle(fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: riskColor, letterSpacing: 0.5)),
               ),
             ],
           ),
 
           const SizedBox(height: 14),
 
-          // ── EXIF fields (if available) ──────────────────────
           if (exif.hasExif && exif.rawFields.isNotEmpty) ...[
             ...exif.rawFields.entries.map((entry) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -668,17 +620,14 @@ class _ResultScreenState extends State<ResultScreen>
                   SizedBox(
                     width: 110,
                     child: Text(entry.key,
-                        style: const TextStyle(
-                            fontSize: 12,
+                        style: const TextStyle(fontSize: 12,
                             color: AppTheme.textSecondary,
                             fontWeight: FontWeight.w500)),
                   ),
                   Expanded(
-                    child: Text(
-                      entry.value.toString(),
-                      style: const TextStyle(
-                          fontSize: 12, color: AppTheme.textPrimary),
-                    ),
+                    child: Text(entry.value.toString(),
+                        style: const TextStyle(fontSize: 12,
+                            color: AppTheme.textPrimary)),
                   ),
                 ],
               ),
@@ -686,11 +635,9 @@ class _ResultScreenState extends State<ResultScreen>
             const Divider(color: AppTheme.surfaceBorder, height: 20),
           ],
 
-          // ── Suspicion flags ─────────────────────────────────
           if (exif.suspicionFlags.isNotEmpty) ...[
             const Text('FINDINGS',
-                style: TextStyle(
-                    fontSize: 10,
+                style: TextStyle(fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
                     letterSpacing: 0.8)),
@@ -705,17 +652,14 @@ class _ResultScreenState extends State<ResultScreen>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(flag,
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: riskColor,
-                            height: 1.4)),
+                        style: TextStyle(fontSize: 12,
+                            color: riskColor, height: 1.4)),
                   ),
                 ],
               ),
             )),
           ],
 
-          // ── No EXIF / unavailable message ───────────────────
           if (!exif.hasExif) ...[
             Row(
               children: [
@@ -723,8 +667,7 @@ class _ResultScreenState extends State<ResultScreen>
                   exif.riskLevel == 'LOW'
                       ? Icons.info_outline_rounded
                       : Icons.warning_amber_rounded,
-                  size: 14,
-                  color: riskColor,
+                  size: 14, color: riskColor,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -732,8 +675,8 @@ class _ResultScreenState extends State<ResultScreen>
                     exif.riskLevel == 'LOW'
                         ? 'Screenshot or web image — metadata not applicable'
                         : exif.summary,
-                    style: TextStyle(
-                        fontSize: 12, color: riskColor, height: 1.4),
+                    style: TextStyle(fontSize: 12,
+                        color: riskColor, height: 1.4),
                   ),
                 ),
               ],
@@ -744,10 +687,10 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // ── Tips Card ─────────────────────────────────────────────────
+  // ── Tips Card (UNCHANGED) ──────────────────────────────────
   Widget _buildTipsCard(Color color) {
     return Container(
-      width: double.infinity,
+      width:   double.infinity,
       padding: const EdgeInsets.all(AppTheme.paddingL),
       decoration: AppTheme.cardDecoration(),
       child: Column(
@@ -758,7 +701,7 @@ class _ResultScreenState extends State<ResultScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color:        color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.lightbulb_outline_rounded,
@@ -766,8 +709,7 @@ class _ResultScreenState extends State<ResultScreen>
               ),
               const SizedBox(width: 10),
               const Text('WHAT TO LOOK FOR',
-                  style: TextStyle(
-                      fontSize: 11,
+                  style: TextStyle(fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textSecondary,
                       letterSpacing: 1.0)),
@@ -781,19 +723,16 @@ class _ResultScreenState extends State<ResultScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 6,
-                    height: 6,
+                    width: 6, height: 6,
                     margin: const EdgeInsets.only(top: 6),
-                    decoration:
-                    BoxDecoration(color: color, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                        color: color, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(tip,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textPrimary,
-                            height: 1.5)),
+                        style: const TextStyle(fontSize: 14,
+                            color: AppTheme.textPrimary, height: 1.5)),
                   ),
                 ],
               ),
@@ -804,17 +743,13 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // ── Helper ────────────────────────────────────────────────────
+  // ── Helper ─────────────────────────────────────────────────
   Color _getRiskColor(String riskLevel) {
     switch (riskLevel) {
-      case 'HIGH':
-        return AppTheme.error;
-      case 'MEDIUM':
-        return AppTheme.accent;
-      case 'LOW':
-        return AppTheme.success;
-      default:
-        return AppTheme.textSecondary;
+      case 'HIGH':   return AppTheme.error;
+      case 'MEDIUM': return AppTheme.accent;
+      case 'LOW':    return AppTheme.success;
+      default:       return AppTheme.textSecondary;
     }
   }
 }

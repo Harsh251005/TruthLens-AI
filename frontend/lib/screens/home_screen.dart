@@ -86,7 +86,7 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: NestedScrollView(
-        headerSliverBuilder: (_, __) => [_buildSliverAppBar()],
+        headerSliverBuilder: (_, _) => [_buildSliverAppBar()],
         body: RefreshIndicator(
           onRefresh:       _loadStats,
           color:           AppTheme.primary,
@@ -459,8 +459,8 @@ class _HomeScreenState extends State<HomeScreen>
             onPressed: () async {
               await Navigator.of(context).push(
                 PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => const ScanScreen(),
-                  transitionsBuilder: (_, animation, __, child) =>
+                  pageBuilder: (_, _, _) => const ScanScreen(),
+                  transitionsBuilder: (_, animation, _, child) =>
                       SlideTransition(
                         position: Tween<Offset>(
                           begin: const Offset(1, 0), end: Offset.zero,

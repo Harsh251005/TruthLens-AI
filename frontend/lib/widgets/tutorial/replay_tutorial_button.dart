@@ -32,7 +32,7 @@ class ReplayTutorialButton extends StatelessWidget {
           vertical:   AppTheme.paddingM,
         ),
         decoration: AppTheme.cardDecoration(
-          borderColor: AppTheme.primary.withOpacity(0.25),
+          borderColor: AppTheme.primary.withValues(alpha: 0.25),
         ),
         child: Row(
           children: [
@@ -40,7 +40,7 @@ class ReplayTutorialButton extends StatelessWidget {
             Container(
               width: 42, height: 42,
               decoration: BoxDecoration(
-                color:        AppTheme.primary.withOpacity(0.12),
+                color:        AppTheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppTheme.radiusS),
               ),
               child: const Icon(

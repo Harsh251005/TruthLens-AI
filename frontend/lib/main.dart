@@ -40,9 +40,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title:                      'TruthLens AI',
+      title: 'TruthLens AI',
       debugShowCheckedModeBanner: false,
-      theme:     AppTheme.darkTheme,
+      theme: AppTheme.darkTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark,
 
