@@ -681,7 +681,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
                 _items.isEmpty
                     ? 'Select Images (max $_maxBatchSize)'
                     : _items.length >= _maxBatchSize
-                    ? 'Limit reached ($_maxBatchSize/$maxBatchSize)'
+                    ? 'Limit reached ($_maxBatchSize/$_maxBatchSize)'
                     : 'Add More (${_items.length}/$_maxBatchSize)',
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
