@@ -45,6 +45,11 @@ class _BatchScanScreenState extends State<BatchScanScreen>
   final _detectionService = DetectionService();
   final _notifService     = NotificationService();
 
+  // ── Constants ─────────────────────────────────────────────────
+  // Hard cap: prevents server overload and keeps UX snappy.
+  // Adjust only if backend capacity is deliberately increased.
+  static const int _maxBatchSize = 10;
+
   // ── State ─────────────────────────────────────────────────────
   List<BatchImageItem> _items        = [];
   bool                 _isScanning   = false;
@@ -78,6 +83,15 @@ class _BatchScanScreenState extends State<BatchScanScreen>
 
   // ── Pick multiple images ──────────────────────────────────────
   Future<void> _pickImages() async {
+    // Guard: don't open picker if already at the limit
+    if (_items.length >= _maxBatchSize) {
+      _showSnack(
+        'Maximum $_maxBatchSize images allowed per batch.',
+        isError: true,
+      );
+      return;
+    }
+
     try {
       final picked = await _imagePicker.pickMultiImage(
         imageQuality: 85,
@@ -85,7 +99,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
       );
       if (picked.isEmpty) return;
 
-      final newFiles    = picked.map((x) => File(x.path)).toList();
+      final newFiles      = picked.map((x) => File(x.path)).toList();
       final existingPaths = _items.map((i) => i.file.path).toSet();
 
       // Only add images that aren't already in the grid
@@ -94,7 +108,20 @@ class _BatchScanScreenState extends State<BatchScanScreen>
           .map((f) => BatchImageItem(file: f))
           .toList();
 
-      setState(() => _items = [..._items, ...uniqueNew]);
+      // Calculate how many slots are still available and cap the addition
+      final slotsAvailable = _maxBatchSize - _items.length;
+      final toAdd          = uniqueNew.take(slotsAvailable).toList();
+
+      setState(() => _items = [..._items, ...toAdd]);
+
+      // Inform user if we silently dropped some of their selections
+      if (toAdd.length < uniqueNew.length) {
+        _showSnack(
+          'Only $slotsAvailable image(s) added — '
+              'limit of $_maxBatchSize reached.',
+          isError: true,
+        );
+      }
 
     } catch (e) {
       _showSnack('Failed to pick images. Please try again.', isError: true);
@@ -350,7 +377,7 @@ class _BatchScanScreenState extends State<BatchScanScreen>
                   color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
           const Text(
-            'Tap "Select Images" to pick\nmultiple photos at once',
+            'Tap "Select Images" to pick\nup to $_maxBatchSize photos at once',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14,
                 color: AppTheme.textSecondary, height: 1.5),
@@ -647,12 +674,17 @@ class _BatchScanScreenState extends State<BatchScanScreen>
         if (!_isScanning) ...[
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: _pickImages,
+              // Disable picker once the hard cap is reached
+              onPressed: _items.length >= _maxBatchSize ? null : _pickImages,
               icon:  const Icon(Icons.photo_library_outlined, size: 18),
-              label: Text(_items.isEmpty
-                  ? 'Select Images'
-                  : 'Add More Images',
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              label: Text(
+                _items.isEmpty
+                    ? 'Select Images (max $_maxBatchSize)'
+                    : _items.length >= _maxBatchSize
+                    ? 'Limit reached ($_maxBatchSize/$maxBatchSize)'
+                    : 'Add More (${_items.length}/$_maxBatchSize)',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primary,
                 side:    const BorderSide(color: AppTheme.primary),

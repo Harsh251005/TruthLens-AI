@@ -136,10 +136,19 @@ def reset_password(data: ResetPasswordRequest):
                 detail="Invalid or expired reset code. Please request a new one."
             )
 
-        # 3. Hash the new password
+        # 3. Reject if new password is the same as the current one.
+        # verify_password compares the plaintext against the stored bcrypt hash.
+        # This must happen BEFORE hashing the new password.
+        if verify_password(data.new_password, user["password"]):
+            raise HTTPException(
+                status_code=400,
+                detail="New password must be different from your current password."
+            )
+
+        # 4. Hash the new password
         hashed = hash_password(data.new_password)
 
-        # 4. Update password in users table
+        # 5. Update password in users table
         cursor.execute(
             "UPDATE users SET password = %s WHERE id = %s",
             (hashed, user["id"])
@@ -152,7 +161,7 @@ def reset_password(data: ResetPasswordRequest):
                 detail="Failed to update password. Please try again."
             )
 
-        # 5. Mark token as used so it can't be reused
+        # 6. Mark token as used so it can't be reused
         cursor.execute(
             "UPDATE reset_tokens SET used = TRUE WHERE id = %s",
             (token_record["id"],)

@@ -16,9 +16,12 @@ from typing import Optional, List
 # ── Signup ────────────────────────────────────────────────────────
 
 class SignupRequest(BaseModel):
-    name:     str = Field(..., min_length=2, max_length=100)
+    name:     str = Field(..., min_length=2, max_length=20)
     email:    EmailStr
-    password: str = Field(..., min_length=6)
+    # Whitelist: only letters, digits, and # $ @ permitted.
+    # Blocks injection payloads (e.g. <script>alert(1)</script>)
+    # even if a client bypasses Flutter validation entirely.
+    password: str = Field(..., min_length=6, pattern=r'^[a-zA-Z0-9#$@]+$')
 
 class SignupResponse(BaseModel):
     message: str
@@ -39,9 +42,10 @@ class LoginResponse(BaseModel):
 # ── Update Profile ────────────────────────────────────────────────
 
 class UpdateProfileRequest(BaseModel):
-    name:             Optional[str] = Field(None, min_length=2, max_length=100)
+    name:             Optional[str] = Field(None, min_length=2, max_length=20)
     current_password: Optional[str] = None
-    new_password:     Optional[str] = Field(None, min_length=6)
+    # Same whitelist — changing password via profile must follow the same rule
+    new_password:     Optional[str] = Field(None, min_length=6, pattern=r'^[a-zA-Z0-9#$@]+$')
 
 class UpdateProfileResponse(BaseModel):
     message: str
@@ -81,7 +85,8 @@ class ForgotPasswordResponse(BaseModel):
 class ResetPasswordRequest(BaseModel):
     email:        EmailStr
     code:         str = Field(..., min_length=6, max_length=6)
-    new_password: str = Field(..., min_length=6)
+    # Same whitelist as signup — a password reset must not open a new injection vector
+    new_password: str = Field(..., min_length=6, pattern=r'^[a-zA-Z0-9#$@]+$')
 
 class ResetPasswordResponse(BaseModel):
     message: str

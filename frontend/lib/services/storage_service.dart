@@ -31,16 +31,21 @@ class StorageService {
   static const _kToken       = 'user_token';
   static const _kAvatarType  = 'user_avatar_type';
   static const _kAvatarData  = 'user_avatar_data';
+  // Safety net: SplashScreen reads this before routing to home.
+  // Guards against any future code accidentally persisting an
+  // unverified user and granting them access to the app.
+  static const _kIsVerified  = 'user_is_verified';
 
 
   // ── Save / overwrite the full user session ────────────────────
   static Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setInt   (_kId,    user.id);
-    await prefs.setString(_kName,  user.name);
-    await prefs.setString(_kEmail, user.email);
-    await prefs.setString(_kToken, user.token);
+    await prefs.setInt   (_kId,         user.id);
+    await prefs.setString(_kName,       user.name);
+    await prefs.setString(_kEmail,      user.email);
+    await prefs.setString(_kToken,      user.token);
+    await prefs.setBool  (_kIsVerified, user.isVerified); // safety net
     await prefs.setString(_kAvatarType, user.avatarType);
 
     // Only write avatar_data when it has a value; remove it when null
@@ -57,13 +62,23 @@ class StorageService {
   static Future<UserModel?> getSavedUser() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final id    = prefs.getInt(_kId);
-    final name  = prefs.getString(_kName);
-    final email = prefs.getString(_kEmail);
-    final token = prefs.getString(_kToken);
+    final id         = prefs.getInt(_kId);
+    final name       = prefs.getString(_kName);
+    final email      = prefs.getString(_kEmail);
+    final token      = prefs.getString(_kToken);
+    // Safety net: treat missing key as unverified (false) so that
+    // sessions created before this key existed are re-authenticated.
+    final isVerified = prefs.getBool(_kIsVerified) ?? false;
 
     // If any core field is missing the user isn't logged in
     if (id == null || name == null || email == null || token == null) {
+      return null;
+    }
+
+    // Guard: an unverified session saved by old code must not auto-login.
+    // Clear it so the user goes through signup + verification properly.
+    if (!isVerified) {
+      await clearUser();
       return null;
     }
 
@@ -72,6 +87,7 @@ class StorageService {
       name:       name,
       email:      email,
       token:      token,
+      isVerified: true,
       avatarType: prefs.getString(_kAvatarType) ?? 'initial',
       avatarData: prefs.getString(_kAvatarData),   // null if key absent
     );

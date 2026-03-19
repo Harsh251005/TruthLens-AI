@@ -17,11 +17,16 @@ class Validators {
     return null;
   }
 
-  /// Validates password length
+  /// Validates password length and allowed characters
   static String? password(String? value) {
     if (value == null || value.isEmpty) return 'Password is required';
     if (value.length < AppConstants.minPasswordLength) {
       return 'Password must be at least ${AppConstants.minPasswordLength} characters';
+    }
+    // Whitelist: only letters, digits, and # $ @ are permitted.
+    // This blocks injection payloads like <script>alert(1)</script>.
+    if (!RegExp(r'^[a-zA-Z0-9#$@]+$').hasMatch(value)) {
+      return 'Password may only contain letters, numbers, and # \$ @';
     }
     return null;
   }
@@ -33,6 +38,9 @@ class Validators {
     }
     if (value.trim().length < 2) {
       return 'Name must be at least 2 characters';
+    }
+    if (value.trim().length > AppConstants.maxNameLength) {
+      return 'Name must be at most ${AppConstants.maxNameLength} characters';
     }
     // Only alphabets and spaces allowed
     if (!RegExp(r"^[a-zA-Z ]+$").hasMatch(value.trim())) {

@@ -101,7 +101,14 @@ class AuthService {
         userJson.putIfAbsent('is_verified', () => false);
 
         final user = UserModel.fromJson(userJson);
-        await StorageService.saveUser(user);
+
+        // ── CRITICAL: Do NOT save to SharedPreferences here ──────
+        // Saving an unverified user would let the app auto-login on
+        // restart, completely bypassing email verification.
+        // StorageService.saveUser() is called ONLY in verifyEmail()
+        // after the OTP is confirmed — that is the single source of truth.
+        // ─────────────────────────────────────────────────────────
+
         return AuthResult(
           success: true,
           message: body['message'] as String? ?? 'Account created',
