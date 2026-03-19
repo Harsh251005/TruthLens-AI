@@ -13,7 +13,6 @@ import 'profile_screen.dart';
 import 'scan_screen.dart';
 import 'history_screen.dart';
 import 'about_screen.dart';
-import '../services/storage_service.dart';
 import 'analytics_screen.dart';
 import 'challenge_screen.dart';
 import 'awareness_screen.dart';
@@ -66,12 +65,6 @@ class _HomeScreenState extends State<HomeScreen>
     final stats = await _detectionService.getStats();
     if (!mounted) return;
     setState(() { _stats = stats; _isLoadingStats = false; });
-  }
-
-  Future<void> _refreshUser() async {
-    final savedUser = await StorageService.getSavedUser();
-    if (!mounted || savedUser == null) return;
-    setState(() => _displayName = savedUser.name);
   }
 
   String get _greeting {
@@ -153,10 +146,20 @@ class _HomeScreenState extends State<HomeScreen>
             icon: const Icon(Icons.person_outline,
                 color: AppTheme.primary, size: 22),
             onPressed: () async {
-              await Navigator.of(context).push(
+              // ProfileScreen returns the user's (possibly updated) name
+              // when it pops — via PopScope or the AppBar back button.
+              final updatedName = await Navigator.of(context).push<String>(
                 MaterialPageRoute(builder: (_) => const ProfileScreen()),
               );
-              if (mounted) _refreshUser();
+              if (!mounted) return;
+
+              // Update greeting immediately if name changed
+              if (updatedName != null && updatedName != _displayName) {
+                setState(() => _displayName = updatedName);
+              }
+
+              // Always refresh stats in case scans changed while in profile
+              _loadStats();
             },
           ),
         ),

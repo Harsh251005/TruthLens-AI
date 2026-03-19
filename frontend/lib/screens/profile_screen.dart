@@ -598,26 +598,35 @@ class _ProfileScreenState extends State<ProfileScreen>
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: NestedScrollView(
-        headerSliverBuilder: (_, innerScrolled) => [
-          _buildSliverHeader(innerScrolled),
-        ],
-        body: Column(children: [
-          _buildTabBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildAccountTab(),
-                _buildSecurityTab(),
-              ],
-            ),
+    return PopScope(
+      // Intercept every pop (system back gesture + AppBar back button)
+      // and return the current _userName so HomeScreen can update its
+      // greeting without depending on SharedPreferences.
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          Navigator.of(context).pop(_userName);
+        },
+        child: Scaffold(
+          backgroundColor: AppTheme.background,
+          body: NestedScrollView(
+            headerSliverBuilder: (_, innerScrolled) => [
+              _buildSliverHeader(innerScrolled),
+            ],
+            body: Column(children: [
+              _buildTabBar(),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildAccountTab(),
+                    _buildSecurityTab(),
+                  ],
+                ),
+              ),
+            ]),
           ),
-        ]),
-      ),
-    );
+        ));
   }
 
 
@@ -631,7 +640,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new,
             color: AppTheme.textPrimary, size: 20),
-        onPressed: () => Navigator.of(context).pop(),
+        // Return current _userName so HomeScreen greeting updates instantly
+        onPressed: () => Navigator.of(context).pop(_userName),
       ),
       title: AnimatedOpacity(
         opacity:  innerScrolled ? 1.0 : 0.0,

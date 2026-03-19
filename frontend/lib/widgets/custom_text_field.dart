@@ -49,6 +49,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
         hintText:      widget.hint,
         labelStyle:    const TextStyle(color: AppTheme.textSecondary),
         hintStyle:     const TextStyle(color: AppTheme.textHint),
+        // Allow error text to wrap across multiple lines so long
+        // validation messages (e.g. password whitelist warning) are
+        // fully visible instead of being truncated with '...'
+        errorMaxLines: 3,
         prefixIcon:    Icon(widget.icon, color: AppTheme.textSecondary, size: 20),
         // Password visibility toggle
         suffixIcon: widget.isPassword
