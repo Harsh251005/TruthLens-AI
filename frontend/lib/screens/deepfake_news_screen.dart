@@ -1,18 +1,18 @@
 // screens/deepfake_news_screen.dart
 // ============================================================
-// REWRITTEN: Multi-category news feed with tabbed UI.
+// FIXED:
+//   Bug 1 — forceRefresh set _isLoading = true which replaced
+//            the whole screen with a spinner and disposed the
+//            TabController, causing a permanently stuck state.
+//   Bug 2 — _applyCategories() disposed the TabController
+//            while TabBarView was still referencing it.
 //
-// KEY CHANGES:
-//   1. News is fetched from our OWN backend (/api/news/),
-//      NOT directly from NewsAPI. The backend holds a shared
-//      server-side cache — same articles for every user.
-//      Zero per-user API calls.
-//   2. Categories: Deepfakes, AI Fraud, Cybersecurity,
-//      AI Ethics, Misinformation, AI Regulation,
-//      Detection Tech, Privacy, Generative AI.
-//   3. Local client-side cache still used to avoid redundant
-//      backend calls (24h TTL in SharedPreferences).
-//   4. Removed direct NewsAPI key usage from Flutter entirely.
+// Fix: separate _isRefreshing flag for background refreshes.
+//   - First load (_categories empty) → shows full loading screen
+//   - Refresh (pull-to-refresh or button) → keeps existing
+//     content visible, shows a top banner while loading,
+//     updates in place when done. TabController is only
+//     recreated if category count changes.
 // ============================================================
 
 import 'dart:convert';
@@ -62,10 +62,10 @@ class NewsArticle {
 }
 
 class NewsCategory {
-  final String             id;
-  final String             label;
-  final Color              color;
-  final List<NewsArticle>  articles;
+  final String            id;
+  final String            label;
+  final Color             color;
+  final List<NewsArticle> articles;
 
   const NewsCategory({
     required this.id,
@@ -75,14 +75,12 @@ class NewsCategory {
   });
 
   factory NewsCategory.fromJson(Map<String, dynamic> j) {
-    // Parse hex color string like "#EF4444"
     final hex   = (j['color_hex'] as String? ?? '#4F8EF7').replaceAll('#', '');
     final color = Color(int.parse('FF$hex', radix: 16));
-
     return NewsCategory(
-      id:    j['id']    as String? ?? '',
-      label: j['label'] as String? ?? '',
-      color: color,
+      id:       j['id']    as String? ?? '',
+      label:    j['label'] as String? ?? '',
+      color:    color,
       articles: (j['articles'] as List? ?? [])
           .map((a) => NewsArticle.fromJson(a as Map<String, dynamic>))
           .toList(),
@@ -102,17 +100,17 @@ class DeepfakeNewsScreen extends StatefulWidget {
 class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
     with SingleTickerProviderStateMixin {
 
-  List<NewsCategory> _categories     = [];
-  bool               _isLoading      = true;
-  bool               _isStaleCache   = false;
+  List<NewsCategory> _categories   = [];
+  bool               _isLoading    = true;   // First load only
+  bool               _isRefreshing = false;  // Background refresh only — FIX
+  bool               _isStaleCache = false;
   String?            _fetchedAt;
 
   TabController? _tabController;
 
-  // Client-side cache key (SharedPreferences)
-  static const String _cacheKey     = 'news_multi_cache_v2';
-  static const String _cacheTimeKey = 'news_multi_cache_time_v2';
-  static const int    _cacheTtlHours = 24; // Don't hammer backend more than once/day
+  static const String _cacheKey      = 'news_multi_cache_v2';
+  static const String _cacheTimeKey  = 'news_multi_cache_time_v2';
+  static const int    _cacheTtlHours = 24;
 
   @override
   void initState() {
@@ -126,24 +124,35 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
     super.dispose();
   }
 
-  // ── Data Loading ───────────────────────────────────────────
+  // ── Data loading ───────────────────────────────────────────
 
   Future<void> _loadNews({bool forceRefresh = false}) async {
-    setState(() { _isLoading = true; });
+    // ── FIX: distinguish first load vs background refresh ────
+    // First load (_categories empty) → full screen spinner
+    // Refresh → keep existing UI, show top banner only
+    if (_categories.isEmpty) {
+      setState(() => _isLoading = true);
+    } else {
+      setState(() => _isRefreshing = true);  // ← keeps content visible
+    }
 
-    // Try client-side cache first (avoids redundant backend calls)
+    // Try client-side cache first (skip on forceRefresh)
     if (!forceRefresh) {
       final cached = await _loadClientCache();
       if (cached != null) {
-        _applyCategories(cached['categories'], cached['fetched_at'], stale: false);
+        _applyCategories(
+          cached['categories'] as List<NewsCategory>,
+          cached['fetched_at'] as String?,
+          stale: false,
+        );
         return;
       }
     }
 
-    // Fetch from backend (which serves the shared server cache)
+    // Fetch from backend
     try {
       final response = await http.get(
-        Uri.parse(AppConstants.newsEndpoint), // e.g. https://yourapi.com/api/news/
+        Uri.parse(AppConstants.newsEndpoint),
         headers: {'Accept': 'application/json'},
       ).timeout(const Duration(seconds: 20));
 
@@ -155,10 +164,8 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
             .toList();
 
         if (cats.isNotEmpty) {
-          final fetchedAt = body['fetched_at'] as String?;
-          // Save to client cache so next open is instant
-          await _saveClientCache(cats, fetchedAt);
-          _applyCategories(cats, fetchedAt, stale: false);
+          await _saveClientCache(cats, body['fetched_at'] as String?);
+          _applyCategories(cats, body['fetched_at'] as String?, stale: false);
           return;
         }
       }
@@ -166,15 +173,24 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
       debugPrint('News fetch error: $e');
     }
 
-    // If backend call failed, try serving stale client cache
+    // Backend failed → try stale client cache
     final stale = await _loadClientCache(ignoreExpiry: true);
     if (stale != null) {
-      _applyCategories(stale['categories'], stale['fetched_at'], stale: true);
+      _applyCategories(
+        stale['categories'] as List<NewsCategory>,
+        stale['fetched_at'] as String?,
+        stale: true,
+      );
       return;
     }
 
-    // Nothing at all — show empty state
-    setState(() { _isLoading = false; });
+    // Nothing available — clear loading flags and show empty state
+    if (mounted) {
+      setState(() {
+        _isLoading    = false;
+        _isRefreshing = false;
+      });
+    }
   }
 
   void _applyCategories(
@@ -182,38 +198,44 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
       String? fetchedAt, {
         required bool stale,
       }) {
-    _tabController?.dispose();
-    _tabController = TabController(length: cats.length, vsync: this);
+    if (!mounted) return;
+
+    // ── FIX: only recreate TabController if category count changes ──
+    // Previously disposed on every refresh — caused stuck TabBarView.
+    if (_tabController == null || _tabController!.length != cats.length) {
+      _tabController?.dispose();
+      _tabController = TabController(length: cats.length, vsync: this);
+    }
+
     setState(() {
       _categories   = cats;
       _fetchedAt    = fetchedAt;
       _isStaleCache = stale;
-      _isLoading    = false;
+      _isLoading    = false;    // Clear full-screen spinner
+      _isRefreshing = false;    // Clear background refresh banner
     });
   }
 
-  // ── Client-side cache (SharedPreferences) ─────────────────
+  // ── Client cache ───────────────────────────────────────────
 
   Future<Map<String, dynamic>?> _loadClientCache({
     bool ignoreExpiry = false,
   }) async {
     try {
-      final prefs    = await SharedPreferences.getInstance();
-      final timeStr  = prefs.getString(_cacheTimeKey);
-      final dataStr  = prefs.getString(_cacheKey);
+      final prefs   = await SharedPreferences.getInstance();
+      final timeStr = prefs.getString(_cacheTimeKey);
+      final dataStr = prefs.getString(_cacheKey);
       if (timeStr == null || dataStr == null) return null;
 
       if (!ignoreExpiry) {
-        final saved = DateTime.parse(timeStr);
-        final age   = DateTime.now().difference(saved).inHours;
+        final age = DateTime.now().difference(DateTime.parse(timeStr)).inHours;
         if (age >= _cacheTtlHours) return null;
       }
 
-      final raw = jsonDecode(dataStr) as Map<String, dynamic>;
+      final raw  = jsonDecode(dataStr) as Map<String, dynamic>;
       final cats = (raw['categories'] as List)
           .map((c) => NewsCategory.fromJson(c as Map<String, dynamic>))
           .toList();
-
       return {'categories': cats, 'fetched_at': raw['fetched_at']};
     } catch (_) {
       return null;
@@ -248,8 +270,10 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open article'),
-            backgroundColor: AppTheme.error),
+        const SnackBar(
+          content:         Text('Could not open article'),
+          backgroundColor: AppTheme.error,
+        ),
       );
     }
   }
@@ -282,12 +306,26 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
-          IconButton(
-            icon:      const Icon(Icons.refresh, color: AppTheme.primary),
-            onPressed: () => _loadNews(forceRefresh: true),
-          ),
+          // ── FIX: show small spinner in AppBar during refresh ──
+          // instead of replacing entire screen content
+          if (_isRefreshing)
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primary, strokeWidth: 2,
+                  ),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon:      const Icon(Icons.refresh, color: AppTheme.primary),
+              onPressed: () => _loadNews(forceRefresh: true),
+            ),
         ],
-        // Category tab bar attached to AppBar bottom
         bottom: _isLoading || _categories.isEmpty
             ? null
             : PreferredSize(
@@ -309,13 +347,13 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
     return Container(
       color: AppTheme.surface,
       child: TabBar(
-        controller:         _tabController,
-        isScrollable:       true,
-        tabAlignment:       TabAlignment.start,
-        indicatorColor:     Colors.transparent,
-        dividerColor:       AppTheme.surfaceBorder,
-        labelPadding:       const EdgeInsets.symmetric(horizontal: 6),
-        padding:            const EdgeInsets.fromLTRB(12, 6, 12, 8),
+        controller:     _tabController,
+        isScrollable:   true,
+        tabAlignment:   TabAlignment.start,
+        indicatorColor: Colors.transparent,
+        dividerColor:   AppTheme.surfaceBorder,
+        labelPadding:   const EdgeInsets.symmetric(horizontal: 6),
+        padding:        const EdgeInsets.fromLTRB(12, 6, 12, 8),
         tabs: _categories.map((cat) => _CategoryTab(cat: cat)).toList(),
       ),
     );
@@ -326,13 +364,13 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
   Widget _buildTabContent() {
     return Column(
       children: [
-        // Status banner
         _buildStatusBanner(),
-        // Article lists per tab
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children:   _categories.map((cat) => _buildArticleList(cat)).toList(),
+            children:   _categories
+                .map((cat) => _buildArticleList(cat))
+                .toList(),
           ),
         ),
       ],
@@ -343,10 +381,12 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
 
   Widget _buildStatusBanner() {
     final totalArticles = _categories.fold(0, (s, c) => s + c.articles.length);
-    final color  = _isStaleCache ? AppTheme.accent : AppTheme.primary;
-    final icon   = _isStaleCache ? Icons.bookmark_outlined : Icons.rss_feed_rounded;
-    final label  = _isStaleCache
-        ? 'Showing cached articles. Pull to refresh for latest.'
+    final color = _isStaleCache ? AppTheme.accent : AppTheme.primary;
+    final icon  = _isStaleCache
+        ? Icons.bookmark_outlined
+        : Icons.rss_feed_rounded;
+    final label = _isStaleCache
+        ? 'Showing cached articles. Pull down to refresh.'
         : '$totalArticles articles across ${_categories.length} categories • Tap to read';
 
     return Container(
@@ -370,7 +410,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
     );
   }
 
-  // ── Article list for one category ─────────────────────────
+  // ── Article list ───────────────────────────────────────────
 
   Widget _buildArticleList(NewsCategory cat) {
     return RefreshIndicator(
@@ -379,8 +419,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
       backgroundColor: AppTheme.surface,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(
-            AppTheme.paddingL, AppTheme.paddingM,
-            AppTheme.paddingL, 32),
+            AppTheme.paddingL, AppTheme.paddingM, AppTheme.paddingL, 32),
         children: [
           ...cat.articles.map((a) => _ArticleCard(
             article:     a,
@@ -460,7 +499,7 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
   }
 }
 
-// ── Category Tab Widget ────────────────────────────────────────
+// ── Category Tab ──────────────────────────────────────────────
 
 class _CategoryTab extends StatelessWidget {
   final NewsCategory cat;
@@ -468,8 +507,6 @@ class _CategoryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use TabController's animation to highlight active tab
-    final tabCtrl = DefaultTabController.maybeOf(context);
     return Tab(
       height: 32,
       child: Container(
@@ -492,13 +529,13 @@ class _CategoryTab extends StatelessWidget {
   }
 }
 
-// ── Article Card Widget ────────────────────────────────────────
+// ── Article Card ──────────────────────────────────────────────
 
 class _ArticleCard extends StatelessWidget {
-  final NewsArticle  article;
-  final Color        accentColor;
-  final VoidCallback onTap;
-  final String Function(String) formatDate;
+  final NewsArticle              article;
+  final Color                    accentColor;
+  final VoidCallback             onTap;
+  final String Function(String)  formatDate;
 
   const _ArticleCard({
     required this.article,
@@ -521,7 +558,6 @@ class _ArticleCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Thumbnail
             if (article.imageUrl != null && article.imageUrl!.isNotEmpty)
               ClipRRect(
                 borderRadius: const BorderRadius.only(
@@ -545,14 +581,11 @@ class _ArticleCard extends StatelessWidget {
                   },
                 ),
               ),
-
-            // Content
             Padding(
               padding: const EdgeInsets.all(AppTheme.paddingL),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Source + date
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -564,38 +597,32 @@ class _ArticleCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(article.source,
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.w700,
+                            style: TextStyle(fontSize: 11,
+                                fontWeight: FontWeight.w700,
                                 color: accentColor)),
                       ),
                       Text(formatDate(article.publishedAt),
-                          style: const TextStyle(
-                              fontSize: 11, color: AppTheme.textSecondary)),
+                          style: const TextStyle(fontSize: 11,
+                              color: AppTheme.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 10),
-
-                  // Title
                   Text(article.title,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w700,
+                      style: const TextStyle(fontSize: 15,
+                          fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary, height: 1.4)),
                   const SizedBox(height: 8),
-
-                  // Description
                   Text(article.description,
                       maxLines: 3, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 13, color: AppTheme.textSecondary,
-                          height: 1.5)),
+                      style: const TextStyle(fontSize: 13,
+                          color: AppTheme.textSecondary, height: 1.5)),
                   const SizedBox(height: 12),
-
-                  // Read more
                   Row(children: [
                     const Spacer(),
                     Text('Read full article',
                         style: TextStyle(fontSize: 12,
-                            color: accentColor, fontWeight: FontWeight.w600)),
+                            color: accentColor,
+                            fontWeight: FontWeight.w600)),
                     const SizedBox(width: 4),
                     Icon(Icons.arrow_forward_ios_rounded,
                         color: accentColor, size: 12),
@@ -604,7 +631,7 @@ class _ArticleCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
+        ),  
       ),
     );
   }
