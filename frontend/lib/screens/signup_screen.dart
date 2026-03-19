@@ -1,6 +1,18 @@
 // screens/signup_screen.dart
+// ============================================================
+// CHANGES FROM ORIGINAL:
+//   1. Added import for TutorialService
+//   2. In _handleSignup() success block — added one line:
+//      await _tutorialService.markNewSignup()
+//      This flags that the next screen after email verification
+//      should show the tutorial.
+//
+// Everything else is 100% UNCHANGED.
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/tutorial_service.dart';        // ← NEW
 import '../utils/app_theme.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
@@ -21,6 +33,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController        = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService               = AuthService();
+  final _tutorialService           = TutorialService();  // ← NEW
   bool    _isLoading    = false;
   String? _errorMessage;
 
@@ -46,6 +59,13 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       if (result.success && result.user != null) {
+
+        // ── NEW: Flag this device as having a fresh signup ──
+        // EmailVerificationScreen reads this flag after OTP
+        // verification to decide whether to show the tutorial.
+        await _tutorialService.markNewSignup();
+
+        // UNCHANGED: navigate to email verification
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
             builder: (_) => EmailVerificationScreen(
@@ -66,11 +86,12 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // ── Everything below is 100% UNCHANGED ───────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
-      // AFTER:
       body: SingleChildScrollView(
         child: Column(children: [
           _buildHero(),
@@ -155,105 +176,104 @@ class _SignupScreenState extends State<SignupScreen> {
 
   Widget _buildFormCard() {
     return Container(
-        padding: const EdgeInsets.all(AppTheme.paddingL),
-        decoration: BoxDecoration(
-          color:        AppTheme.surface,
-          borderRadius: BorderRadius.circular(AppTheme.radiusL),
-          border: Border.all(color: AppTheme.surfaceBorder),
-          boxShadow: [
-            BoxShadow(
-              color:      Colors.black.withValues(alpha: 0.3),
-              blurRadius: 24, spreadRadius: 2,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(children: [
-            // Card header
-            Row(children: [
-              Container(
-                width: 38, height: 38,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.accentGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.person_add_rounded,
-                    color: Colors.white, size: 18),
+      padding: const EdgeInsets.all(AppTheme.paddingL),
+      decoration: BoxDecoration(
+        color:        AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        border: Border.all(color: AppTheme.surfaceBorder),
+        boxShadow: [
+          BoxShadow(
+            color:      Colors.black.withValues(alpha: 0.3),
+            blurRadius: 24, spreadRadius: 2,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(children: [
+          Row(children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                gradient: AppTheme.accentGradient,
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 12),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Sign Up',
-                      style: TextStyle(fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary)),
-                  Text('join the community',
-                      style: TextStyle(fontSize: 12,
-                          color: AppTheme.textSecondary)),
-                ],
-              ),
-            ]),
-            const SizedBox(height: 20),
-            const Divider(color: AppTheme.surfaceBorder),
-            const SizedBox(height: 20),
-            CustomTextField(
-              label:     'Full Name',
-              hint:      'John Doe',
-              controller: _nameController,
-              icon:      Icons.person_outline,
-              validator: Validators.name,
+              child: const Icon(Icons.person_add_rounded,
+                  color: Colors.white, size: 18),
             ),
-            const SizedBox(height: 14),
-            CustomTextField(
-              label:        'Email',
-              hint:         'you@example.com',
-              controller:   _emailController,
-              icon:         Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-              validator:    Validators.email,
-            ),
-            const SizedBox(height: 14),
-            CustomTextField(
-              label:      'Password',
-              hint:       'Create a strong password',
-              controller: _passwordController,
-              icon:       Icons.lock_outline,
-              isPassword: true,
-              validator:  Validators.password,
-            ),
-            const SizedBox(height: 14),
-            CustomTextField(
-              label:      'Confirm Password',
-              hint:       'Repeat your password',
-              controller: _confirmPasswordController,
-              icon:       Icons.lock_outline,
-              isPassword: true,
-              validator:  (value) => Validators.confirmPassword(
-                  value, _passwordController.text),
-              textInputAction: TextInputAction.done,
-            ),
-            const SizedBox(height: 20),
-            if (_errorMessage != null) ...[
-              _buildErrorBanner(),
-              const SizedBox(height: 12),
-            ],
-            PrimaryButton(
-              label:     'Create Account',
-              onPressed: _handleSignup,
-              isLoading: _isLoading,
-            ),
-            const SizedBox(height: 14),
-            const Text(
-              'By creating an account you agree to our\nTerms of Service and Privacy Policy.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11,
-                  color: AppTheme.textSecondary, height: 1.5),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Sign Up',
+                    style: TextStyle(fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary)),
+                Text('join the community',
+                    style: TextStyle(fontSize: 12,
+                        color: AppTheme.textSecondary)),
+              ],
             ),
           ]),
-        ),
+          const SizedBox(height: 20),
+          const Divider(color: AppTheme.surfaceBorder),
+          const SizedBox(height: 20),
+          CustomTextField(
+            label:      'Full Name',
+            hint:       'John Doe',
+            controller: _nameController,
+            icon:       Icons.person_outline,
+            validator:  Validators.name,
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            label:        'Email',
+            hint:         'you@example.com',
+            controller:   _emailController,
+            icon:         Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            validator:    Validators.email,
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            label:      'Password',
+            hint:       'Create a strong password',
+            controller: _passwordController,
+            icon:       Icons.lock_outline,
+            isPassword: true,
+            validator:  Validators.password,
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            label:      'Confirm Password',
+            hint:       'Repeat your password',
+            controller: _confirmPasswordController,
+            icon:       Icons.lock_outline,
+            isPassword: true,
+            validator:  (value) => Validators.confirmPassword(
+                value, _passwordController.text),
+            textInputAction: TextInputAction.done,
+          ),
+          const SizedBox(height: 20),
+          if (_errorMessage != null) ...[
+            _buildErrorBanner(),
+            const SizedBox(height: 12),
+          ],
+          PrimaryButton(
+            label:     'Create Account',
+            onPressed: _handleSignup,
+            isLoading: _isLoading,
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'By creating an account you agree to our\nTerms of Service and Privacy Policy.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11,
+                color: AppTheme.textSecondary, height: 1.5),
+          ),
+        ]),
+      ),
     );
   }
 

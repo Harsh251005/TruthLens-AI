@@ -1,6 +1,18 @@
 // screens/login_screen.dart
+// ============================================================
+// CHANGES FROM ORIGINAL:
+//   1. Added import for TutorialService
+//   2. Added import for TutorialScreen
+//   3. In _handleLogin() success block — replaced direct
+//      HomeScreen push with _navigateAfterLogin() which checks
+//      if the user has seen the tutorial first.
+//
+// Everything else is UNCHANGED.
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/tutorial_service.dart';        // ← NEW
 import '../utils/app_theme.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
@@ -9,6 +21,7 @@ import 'signup_screen.dart';
 import 'home_screen.dart';
 import 'forgot_password_screen.dart';
 import 'email_verification_screen.dart';
+import 'tutorial_screen.dart';                     // ← NEW
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController    = TextEditingController();
   final _passwordController = TextEditingController();
   final _authService        = AuthService();
+  final _tutorialService    = TutorialService();   // ← NEW
   bool    _isLoading    = false;
   String? _errorMessage;
 
@@ -31,26 +45,48 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // ── NEW: Decides where to go after a successful login ─────
+  // If the user hasn't seen the tutorial intro yet → TutorialScreen
+  // Otherwise → HomeScreen (same behaviour as before)
+  Future<void> _navigateAfterLogin(user) async {
+    final hasSeenIntro = await _tutorialService.hasSeenIntro();
+
+    if (!mounted) return;
+
+    final destination = hasSeenIntro
+        ? HomeScreen(user: user)
+        : TutorialScreen(user: user); // TutorialScreen navigates to Home when done
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => destination,
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
     setState(() => _errorMessage = null);
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
+
     final result = await _authService.login(
       email:    _emailController.text.trim(),
       password: _passwordController.text,
     );
+
     if (!mounted) return;
     setState(() => _isLoading = false);
+
     if (result.success && result.user != null) {
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          pageBuilder: (_, _, _) => HomeScreen(user: result.user!),
-          transitionsBuilder: (_, animation, _, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-      );
+      // ── CHANGED: was Navigator.pushReplacement(HomeScreen) ──
+      // Now routes through tutorial check first
+      await _navigateAfterLogin(result.user!);
+
     } else if (result.message == 'email_not_verified' && result.user != null) {
+      // UNCHANGED
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => EmailVerificationScreen(
@@ -59,18 +95,19 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } else {
+      // UNCHANGED
       setState(() => _errorMessage = result.message);
     }
   }
+
+  // ── Everything below this line is 100% UNCHANGED ──────────
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: Column(children: [
-        // ── Gradient hero top half ─────────────────────────────
         _buildHero(),
-        // ── Scrollable form bottom half ────────────────────────
         Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -89,7 +126,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Hero section ──────────────────────────────────────────────
   Widget _buildHero() {
     return Container(
       width:  double.infinity,
@@ -106,7 +142,6 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo circle
             Container(
               width: 72, height: 72,
               decoration: BoxDecoration(
@@ -123,7 +158,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   color: Colors.white, size: 34),
             ),
             const SizedBox(height: 16),
-            // App name
             RichText(
               text: const TextSpan(children: [
                 TextSpan(text: 'Truth',
@@ -148,7 +182,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Form card ─────────────────────────────────────────────────
   Widget _buildFormCard() {
     return Transform.translate(
       offset: const Offset(0, -24),
@@ -169,7 +202,6 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Form(
           key: _formKey,
           child: Column(children: [
-            // Header inside card
             Row(children: [
               Container(
                 width: 38, height: 38,

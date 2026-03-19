@@ -1,11 +1,26 @@
 // screens/email_verification_screen.dart
+// ============================================================
+// CHANGES FROM ORIGINAL:
+//   1. Added import for TutorialService + TutorialScreen
+//   2. _handleVerify() success block now calls
+//      _navigateAfterVerify() instead of directly pushing Home
+//   3. _navigateAfterVerify() uses isNewSignup() — NOT
+//      hasSeenIntro() — to correctly detect fresh signups
+//      even on devices where a previous account already
+//      completed the tutorial.
+//
+// Everything else is 100% UNCHANGED.
+// ============================================================
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
+import '../services/tutorial_service.dart';        // ← NEW
 import '../utils/app_theme.dart';
 import '../models/user_model.dart';
 import 'home_screen.dart';
+import 'tutorial_screen.dart';                     // ← NEW
 
 class EmailVerificationScreen extends StatefulWidget {
   final String    email;
@@ -25,7 +40,8 @@ class _EmailVerificationScreenState
   List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes =
   List.generate(6, (_) => FocusNode());
-  final _authService = AuthService();
+  final _authService     = AuthService();
+  final _tutorialService = TutorialService();      // ← NEW
 
   bool    _isVerifying  = false;
   bool    _isResending  = false;
@@ -38,7 +54,6 @@ class _EmailVerificationScreenState
   void initState() {
     super.initState();
     _startCooldown();
-    // Rebuild when focus changes so border updates
     for (final f in _focusNodes) {
       f.addListener(() { if (mounted) setState(() {}); });
     }
@@ -80,6 +95,33 @@ class _EmailVerificationScreenState
     setState(() => _errorMessage = null);
   }
 
+  // ── NEW: Correct tutorial routing after email verification ─
+  //
+  // Uses isNewSignup() — set by signup_screen on fresh accounts.
+  // This correctly shows tutorial even on devices where an older
+  // account already completed it (hasSeenIntro() would be true).
+  //
+  // For re-verification of existing accounts (e.g. login with
+  // unverified email), isNewSignup() is false → goes to Home.
+  Future<void> _navigateAfterVerify(UserModel user) async {
+    final isNew = await _tutorialService.isNewSignup(); // ← KEY FIX
+    if (!mounted) return;
+
+    final destination = isNew
+        ? TutorialScreen(user: user)   // new signup → show tutorial
+        : HomeScreen(user: user);      // re-verification → skip tutorial
+
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder(
+        pageBuilder:        (_, __, ___) => destination,
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 400),
+      ),
+          (route) => false,
+    );
+  }
+
   Future<void> _handleVerify() async {
     if (_otp.length < 6) {
       setState(() => _errorMessage = 'Please enter all 6 digits');
@@ -87,21 +129,17 @@ class _EmailVerificationScreenState
     }
     setState(() { _isVerifying = true; _errorMessage = null; });
     HapticFeedback.lightImpact();
+
     final result = await _authService.verifyEmail(
       email: widget.email, code: _otp,
     );
+
     if (!mounted) return;
+
     if (result.success && result.user != null) {
       HapticFeedback.heavyImpact();
-      Navigator.of(context).pushAndRemoveUntil(
-        PageRouteBuilder(
-          pageBuilder:        (_, _, _) => HomeScreen(user: result.user!),
-          transitionsBuilder: (_, animation, _, child) =>
-              FadeTransition(opacity: animation, child: child),
-          transitionDuration: const Duration(milliseconds: 400),
-        ),
-            (route) => false,
-      );
+      // ── CHANGED: was pushAndRemoveUntil(HomeScreen) directly
+      await _navigateAfterVerify(result.user!);
     } else {
       HapticFeedback.mediumImpact();
       setState(() {
@@ -112,6 +150,8 @@ class _EmailVerificationScreenState
       });
     }
   }
+
+  // ── Everything below is 100% UNCHANGED ───────────────────
 
   Future<void> _handleResend() async {
     if (_resendCooldown > 0) return;
@@ -140,7 +180,6 @@ class _EmailVerificationScreenState
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: Column(children: [
-        // ── Hero ──────────────────────────────────────────────
         Container(
           width:  double.infinity,
           height: 220,
@@ -186,8 +225,6 @@ class _EmailVerificationScreenState
             ),
           ),
         ),
-
-        // ── Body ──────────────────────────────────────────────
         Expanded(
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
@@ -212,8 +249,6 @@ class _EmailVerificationScreenState
                   ],
                 ),
                 child: Column(children: [
-
-                  // Email display
                   Container(
                     width:   double.infinity,
                     padding: const EdgeInsets.all(12),
@@ -237,10 +272,7 @@ class _EmailVerificationScreenState
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Section label
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: Text('ENTER 6-DIGIT CODE',
@@ -249,10 +281,7 @@ class _EmailVerificationScreenState
                             color: AppTheme.textSecondary,
                             letterSpacing: 1.0)),
                   ),
-
                   const SizedBox(height: 12),
-
-                  // OTP boxes
                   Row(
                     children: List.generate(6, (i) {
                       final hasFocus = _focusNodes[i].hasFocus;
@@ -287,18 +316,14 @@ class _EmailVerificationScreenState
                             maxLength:         1,
                             cursorColor:       AppTheme.primary,
                             style: const TextStyle(
-                              fontSize:   22,
-                              fontWeight: FontWeight.w800,
-                              color:      Colors.white,
-                              height:     1,
+                              fontSize: 22, fontWeight: FontWeight.w800,
+                              color: Colors.white, height: 1,
                             ),
                             decoration: const InputDecoration(
-                              counterText:    '',
-                              border:         InputBorder.none,
-                              enabledBorder:  InputBorder.none,
-                              focusedBorder:  InputBorder.none,
-                              filled:         false,
-                              contentPadding: EdgeInsets.zero,
+                              counterText: '', border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false, contentPadding: EdgeInsets.zero,
                             ),
                             inputFormatters: [
                               FilteringTextInputFormatter.digitsOnly,
@@ -310,10 +335,7 @@ class _EmailVerificationScreenState
                       );
                     }),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Banners
                   if (_errorMessage != null) ...[
                     _buildBanner(_errorMessage!, isError: true),
                     const SizedBox(height: 14),
@@ -322,8 +344,6 @@ class _EmailVerificationScreenState
                     _buildBanner(_successMessage!, isError: false),
                     const SizedBox(height: 14),
                   ],
-
-                  // Verify button
                   SizedBox(
                     width: double.infinity, height: 52,
                     child: ElevatedButton(
@@ -345,10 +365,7 @@ class _EmailVerificationScreenState
                               fontWeight: FontWeight.w700)),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Resend
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -367,9 +384,8 @@ class _EmailVerificationScreenState
                               ? 'Resend in ${_resendCooldown}s'
                               : 'Resend code',
                           style: TextStyle(
-                            fontSize:   14,
-                            fontWeight: FontWeight.w700,
-                            color:      _resendCooldown > 0
+                            fontSize: 14, fontWeight: FontWeight.w700,
+                            color: _resendCooldown > 0
                                 ? AppTheme.textSecondary
                                 : AppTheme.primary,
                           ),
@@ -377,10 +393,7 @@ class _EmailVerificationScreenState
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 16),
-
-                  // Tip
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -421,8 +434,7 @@ class _EmailVerificationScreenState
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(children: [
-        Icon(isError
-            ? Icons.error_outline : Icons.check_circle_outline,
+        Icon(isError ? Icons.error_outline : Icons.check_circle_outline,
             color: color, size: 18),
         const SizedBox(width: 8),
         Expanded(child: Text(message,

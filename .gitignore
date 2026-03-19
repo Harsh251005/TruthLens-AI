@@ -5,6 +5,7 @@ backend/.env
 backend/*.keras
 backend/*.h5
 backend/*.tflite
+backend/news_cache.json
 frontend/assets/models/*.tflite
 
 # ── Python ────────────────────────────────

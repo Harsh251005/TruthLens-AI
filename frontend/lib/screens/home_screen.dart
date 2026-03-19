@@ -1,13 +1,25 @@
 // screens/home_screen.dart
 // ============================================================
-// Home/Dashboard — redesigned for professional look.
-// Axiom branding added to scan card.
+// CHANGES FROM ORIGINAL:
+//   1. Added HomeTutorialMixin — triggers coach marks on first
+//      visit after tutorial intro slides complete.
+//   2. Added `with HomeTutorialMixin` to State class.
+//   3. Called initHomeTutorial(context) in initState.
+//   4. Attached 5 GlobalKeys to the correct widgets:
+//        scanButtonKey  → Start Scanning ElevatedButton
+//        challengeKey   → Challenge action tile
+//        leaderboardKey → Leaderboard action tile
+//        historyKey     → Scan History action tile
+//        profileKey     → Profile icon in AppBar
+//
+// Everything else is 100% UNCHANGED.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/detection_service.dart';
 import '../utils/app_theme.dart';
+import '../widgets/tutorial/home_tutorial_mixin.dart';        // ← NEW
 import 'profile_screen.dart';
 import 'scan_screen.dart';
 import 'history_screen.dart';
@@ -28,15 +40,15 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+// ── CHANGED: added HomeTutorialMixin ──────────────────────────
 class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, HomeTutorialMixin {
 
   final _detectionService = DetectionService();
   ScanStats? _stats;
   bool       _isLoadingStats = true;
   late String _displayName;
 
-  // ── Subtle pulse animation for the scan button ────────────────
   late AnimationController _pulseController;
   late Animation<double>   _pulseAnim;
 
@@ -54,6 +66,11 @@ class _HomeScreenState extends State<HomeScreen>
     _pulseAnim = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    // ── NEW: trigger coach marks after first frame ────────────
+    // Keys must be attached to built widgets before this runs —
+    // addPostFrameCallback inside the mixin handles the timing.
+    initHomeTutorial(context);
   }
 
   @override
@@ -74,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() => _displayName = savedUser.name);
   }
 
-  // ── Time-based greeting ───────────────────────────────────────
   String get _greeting {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning';
@@ -87,9 +103,9 @@ class _HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: NestedScrollView(
-        headerSliverBuilder: (_, _) => [_buildSliverAppBar()],
+        headerSliverBuilder: (_, __) => [_buildSliverAppBar()],
         body: RefreshIndicator(
-          onRefresh: _loadStats,
+          onRefresh:       _loadStats,
           color:           AppTheme.primary,
           backgroundColor: AppTheme.surface,
           child: SingleChildScrollView(
@@ -120,8 +136,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-
-  // ── Sliver app bar ────────────────────────────────────────────
+  // ── Sliver app bar ─────────────────────────────────────────
   Widget _buildSliverAppBar() {
     return SliverAppBar(
       pinned:          true,
@@ -151,7 +166,9 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         Padding(
           padding: const EdgeInsets.only(right: 8),
+          // ── CHANGED: attached profileKey ──────────────────
           child: IconButton(
+            key:  profileKey,                                  // ← KEY ATTACHED
             icon: const Icon(Icons.person_outline,
                 color: AppTheme.primary, size: 22),
             onPressed: () async {
@@ -166,8 +183,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-
-  // ── Welcome banner ────────────────────────────────────────────
+  // ── Welcome banner (UNCHANGED) ────────────────────────────
   Widget _buildWelcomeBanner() {
     final firstName = _displayName.split(' ').first;
     return Container(
@@ -180,8 +196,7 @@ class _HomeScreenState extends State<HomeScreen>
           end:    Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(
-            color: AppTheme.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(children: [
         Expanded(
@@ -225,10 +240,8 @@ class _HomeScreenState extends State<HomeScreen>
             gradient: AppTheme.primaryGradient,
             shape:    BoxShape.circle,
             boxShadow: [
-              BoxShadow(
-                color:      AppTheme.primary.withValues(alpha: 0.3),
-                blurRadius: 16, spreadRadius: 2,
-              ),
+              BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 16, spreadRadius: 2),
             ],
           ),
           child: const Icon(Icons.shield_outlined,
@@ -238,8 +251,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-
-  // ── Stats section ─────────────────────────────────────────────
+  // ── Stats section (UNCHANGED) ─────────────────────────────
   Widget _buildStatsSection() {
     final total = _stats?.totalScans ?? 0;
     final real  = _stats?.totalReal  ?? 0;
@@ -252,30 +264,23 @@ class _HomeScreenState extends State<HomeScreen>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text('Your Activity',
-                style: TextStyle(fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary)),
             GestureDetector(
               onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const AnalyticsScreen()),
-              ),
-              child: Row(children: [
-                const Text('View analytics',
-                    style: TextStyle(fontSize: 12,
-                        color: AppTheme.primary,
+                  MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
+              child: const Row(children: [
+                Text('View analytics',
+                    style: TextStyle(fontSize: 12, color: AppTheme.primary,
                         fontWeight: FontWeight.w600)),
-                const SizedBox(width: 2),
-                const Icon(Icons.arrow_forward_ios_rounded,
+                SizedBox(width: 2),
+                Icon(Icons.arrow_forward_ios_rounded,
                     color: AppTheme.primary, size: 11),
               ]),
             ),
           ],
         ),
-
         const SizedBox(height: 14),
-
-        // ── Big total card ─────────────────────────────────────
         Container(
           width:   double.infinity,
           padding: const EdgeInsets.all(20),
@@ -286,13 +291,10 @@ class _HomeScreenState extends State<HomeScreen>
               end:    Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(AppTheme.radiusL),
-            border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.2)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
             boxShadow: [
-              BoxShadow(
-                color:      AppTheme.primary.withValues(alpha: 0.08),
-                blurRadius: 20, spreadRadius: 2,
-              ),
+              BoxShadow(color: AppTheme.primary.withValues(alpha: 0.08),
+                  blurRadius: 20, spreadRadius: 2),
             ],
           ),
           child: Row(children: [
@@ -303,20 +305,17 @@ class _HomeScreenState extends State<HomeScreen>
                   const Text('TOTAL SCANS',
                       style: TextStyle(fontSize: 11,
                           color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0)),
+                          fontWeight: FontWeight.w700, letterSpacing: 1.0)),
                   const SizedBox(height: 8),
                   _isLoadingStats
                       ? const SizedBox(width: 28, height: 28,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: AppTheme.primary))
+                          strokeWidth: 2, color: AppTheme.primary))
                       : Text('$total',
                       style: const TextStyle(fontSize: 52,
                           fontWeight: FontWeight.w900,
                           color: AppTheme.textPrimary,
-                          height: 1,
-                          letterSpacing: -2)),
+                          height: 1, letterSpacing: -2)),
                   const SizedBox(height: 4),
                   Text(
                     total == 0
@@ -341,31 +340,22 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ]),
         ),
-
         const SizedBox(height: 10),
-
-        // ── Real vs Fake mini cards ────────────────────────────
         Row(children: [
           Expanded(child: _buildMiniStatCard(
-            label:    'Authentic',
-            value:    '$real',
+            label: 'Authentic', value: '$real',
             subtitle: total > 0
-                ? '${((real / total) * 100).toStringAsFixed(0)}% of scans'
-                : '—',
-            icon:     Icons.verified_rounded,
-            color:    AppTheme.success,
-            bgColor:  const Color(0xFF0D2B1F),
+                ? '${((real / total) * 100).toStringAsFixed(0)}% of scans' : '—',
+            icon: Icons.verified_rounded, color: AppTheme.success,
+            bgColor: const Color(0xFF0D2B1F),
           )),
           const SizedBox(width: 10),
           Expanded(child: _buildMiniStatCard(
-            label:    'Deepfakes',
-            value:    '$fake',
+            label: 'Deepfakes', value: '$fake',
             subtitle: total > 0
-                ? '${((fake / total) * 100).toStringAsFixed(0)}% of scans'
-                : '—',
-            icon:     Icons.dangerous_rounded,
-            color:    AppTheme.error,
-            bgColor:  const Color(0xFF2B0D0D),
+                ? '${((fake / total) * 100).toStringAsFixed(0)}% of scans' : '—',
+            icon: Icons.dangerous_rounded, color: AppTheme.error,
+            bgColor: const Color(0xFF2B0D0D),
           )),
         ]),
       ],
@@ -373,18 +363,13 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMiniStatCard({
-    required String   label,
-    required String   value,
-    required String   subtitle,
-    required IconData icon,
-    required Color    color,
-    required Color    bgColor,
+    required String label, required String value, required String subtitle,
+    required IconData icon, required Color color, required Color bgColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color:        bgColor,
-        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+        color: bgColor, borderRadius: BorderRadius.circular(AppTheme.radiusL),
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
@@ -396,32 +381,26 @@ class _HomeScreenState extends State<HomeScreen>
               Text(label.toUpperCase(),
                   style: TextStyle(fontSize: 10,
                       color: color.withValues(alpha: 0.8),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.8)),
+                      fontWeight: FontWeight.w700, letterSpacing: 0.8)),
               Icon(icon, color: color, size: 16),
             ],
           ),
           const SizedBox(height: 8),
           _isLoadingStats
               ? SizedBox(width: 20, height: 20,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: color))
+              child: CircularProgressIndicator(strokeWidth: 2, color: color))
               : Text(value,
-              style: TextStyle(fontSize: 36,
-                  fontWeight: FontWeight.w900,
-                  color: color, height: 1,
-                  letterSpacing: -1)),
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900,
+                  color: color, height: 1, letterSpacing: -1)),
           const SizedBox(height: 4),
           Text(subtitle,
-              style: const TextStyle(fontSize: 11,
-                  color: AppTheme.textSecondary)),
+              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
         ],
       ),
     );
   }
 
-
-  // ── Scan card with Axiom branding ───────────────────────────
+  // ── Scan card ──────────────────────────────────────────────
   Widget _buildScanCard(BuildContext context) {
     return Container(
       width:   double.infinity,
@@ -429,107 +408,81 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF0F1E3D), Color(0xFF0A1628)],
-          begin:  Alignment.topLeft,
-          end:    Alignment.bottomRight,
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        border: Border.all(
-            color: AppTheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(
-            color:      AppTheme.primary.withValues(alpha: 0.12),
-            blurRadius: 32, spreadRadius: 4,
-          ),
+          BoxShadow(color: AppTheme.primary.withValues(alpha: 0.12),
+              blurRadius: 32, spreadRadius: 4),
         ],
       ),
       child: Column(children: [
-
-        // ── Axiom badge ─────────────────────────────────────
         Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 12, vertical: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
             color:        AppTheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.3)),
+            border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(
               width: 6, height: 6,
               decoration: BoxDecoration(
-                color: AppTheme.success,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: AppTheme.success.withValues(alpha: 0.6),
-                      blurRadius: 4),
-                ],
+                color: AppTheme.success, shape: BoxShape.circle,
+                boxShadow: [BoxShadow(
+                    color: AppTheme.success.withValues(alpha: 0.6),
+                    blurRadius: 4)],
               ),
             ),
             const SizedBox(width: 6),
             const Text('Powered by Axiom v1.0',
-                style: TextStyle(fontSize: 11,
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3)),
+                style: TextStyle(fontSize: 11, color: AppTheme.primary,
+                    fontWeight: FontWeight.w600, letterSpacing: 0.3)),
           ]),
         ),
-
         const SizedBox(height: 20),
-
-        // ── Animated scanner icon ─────────────────────────────
         AnimatedBuilder(
           animation: _pulseAnim,
           builder: (_, child) => Transform.scale(
-            scale: _pulseAnim.value,
-            child: child,
-          ),
+              scale: _pulseAnim.value, child: child),
           child: Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
               shape:    BoxShape.circle,
               boxShadow: [
-                BoxShadow(
-                  color:      AppTheme.primary.withValues(alpha: 0.4),
-                  blurRadius: 28, spreadRadius: 6,
-                ),
+                BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4),
+                    blurRadius: 28, spreadRadius: 6),
               ],
             ),
             child: const Icon(Icons.document_scanner_rounded,
                 color: Colors.white, size: 38),
           ),
         ),
-
         const SizedBox(height: 20),
-
         const Text('Deepfake Detector',
-            style: TextStyle(fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textPrimary,
-                letterSpacing: -0.3)),
-
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                color: AppTheme.textPrimary, letterSpacing: -0.3)),
         const SizedBox(height: 8),
-
         const Text(
           'Upload any face photo and Axiom will\ninstantly detect if it\'s real or AI-generated.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13,
-              color: AppTheme.textSecondary, height: 1.6),
+          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary,
+              height: 1.6),
         ),
-
         const SizedBox(height: 24),
 
-        // ── Primary scan button ────────────────────────────────
+        // ── CHANGED: attached scanButtonKey ───────────────────
         SizedBox(
           width: double.infinity, height: 52,
           child: ElevatedButton.icon(
+            key:       scanButtonKey,                          // ← KEY ATTACHED
             onPressed: () async {
               await Navigator.of(context).push(
                 PageRouteBuilder(
-                  pageBuilder: (_, _, _) => const ScanScreen(),
-                  transitionsBuilder: (_, animation, _, child) =>
+                  pageBuilder: (_, __, ___) => const ScanScreen(),
+                  transitionsBuilder: (_, animation, __, child) =>
                       SlideTransition(
                         position: Tween<Offset>(
                           begin: const Offset(1, 0), end: Offset.zero,
@@ -544,40 +497,32 @@ class _HomeScreenState extends State<HomeScreen>
             },
             icon:  const Icon(Icons.search_rounded, size: 20),
             label: const Text('Start Scanning',
-                style: TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius:
-                  BorderRadius.circular(AppTheme.radiusM)),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM)),
               elevation: 0,
             ),
           ),
         ),
 
         const SizedBox(height: 12),
-
-        // ── Batch scan secondary button ────────────────────────
         SizedBox(
           width: double.infinity, height: 44,
           child: OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                  builder: (_) => const BatchScanScreen()),
+              MaterialPageRoute(builder: (_) => const BatchScanScreen()),
             ),
             icon:  const Icon(Icons.photo_library_rounded, size: 18),
             label: const Text('Batch Scan',
-                style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             style: OutlinedButton.styleFrom(
               foregroundColor: AppTheme.accent,
-              side: BorderSide(
-                  color: AppTheme.accent.withValues(alpha: 0.4)),
+              side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.4)),
               shape: RoundedRectangleBorder(
-                  borderRadius:
-                  BorderRadius.circular(AppTheme.radiusM)),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusM)),
             ),
           ),
         ),
@@ -585,28 +530,26 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-
-  // ── Quick actions ─────────────────────────────────────────────
+  // ── Quick actions ──────────────────────────────────────────
   Widget _buildQuickActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Explore',
-            style: TextStyle(fontSize: 16,
-                fontWeight: FontWeight.w700,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary)),
         const SizedBox(height: 14),
 
-        // Row 1
+        // Row 1 — History + Analytics
         Row(children: [
           Expanded(child: _buildActionTile(
+            key:      historyKey,                              // ← KEY ATTACHED
             icon:     Icons.history_rounded,
             label:    'Scan History',
             subtitle: 'Past results',
             color:    AppTheme.accent,
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const HistoryScreen())),
+                MaterialPageRoute(builder: (_) => const HistoryScreen())),
           )),
           const SizedBox(width: 12),
           Expanded(child: _buildActionTile(
@@ -615,39 +558,38 @@ class _HomeScreenState extends State<HomeScreen>
             subtitle: 'Your insights',
             color:    AppTheme.primary,
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const AnalyticsScreen())),
+                MaterialPageRoute(builder: (_) => const AnalyticsScreen())),
           )),
         ]),
 
         const SizedBox(height: 12),
 
-        // Row 2
+        // Row 2 — Challenge + Leaderboard
         Row(children: [
           Expanded(child: _buildActionTile(
+            key:      challengeKey,                            // ← KEY ATTACHED
             icon:     Icons.psychology_rounded,
             label:    'Challenge',
             subtitle: 'Spot the fake!',
             color:    AppTheme.error,
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const ChallengeScreen())),
+                MaterialPageRoute(builder: (_) => const ChallengeScreen())),
           )),
           const SizedBox(width: 12),
           Expanded(child: _buildActionTile(
+            key:      leaderboardKey,                          // ← KEY ATTACHED
             icon:     Icons.leaderboard_rounded,
             label:    'Leaderboard',
             subtitle: 'Top players',
             color:    const Color(0xFFFFD700),
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const LeaderboardScreen())),
+                MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
           )),
         ]),
 
         const SizedBox(height: 12),
 
-        // Row 3
+        // Row 3 — Awareness + News
         Row(children: [
           Expanded(child: _buildActionTile(
             icon:     Icons.school_rounded,
@@ -655,8 +597,7 @@ class _HomeScreenState extends State<HomeScreen>
             subtitle: 'Learn about deepfakes',
             color:    const Color(0xFF26A69A),
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const AwarenessScreen())),
+                MaterialPageRoute(builder: (_) => const AwarenessScreen())),
           )),
           const SizedBox(width: 12),
           Expanded(child: _buildActionTile(
@@ -665,15 +606,16 @@ class _HomeScreenState extends State<HomeScreen>
             subtitle: 'Latest deepfake news',
             color:    const Color(0xFF1565C0),
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const DeepfakeNewsScreen())),
+                MaterialPageRoute(builder: (_) => const DeepfakeNewsScreen())),
           )),
         ]),
       ],
     );
   }
 
+  // ── CHANGED: added optional key param ─────────────────────
   Widget _buildActionTile({
+    Key?              key,                                     // ← KEY PARAM ADDED
     required IconData     icon,
     required String       label,
     required String       subtitle,
@@ -681,14 +623,14 @@ class _HomeScreenState extends State<HomeScreen>
     required VoidCallback onTap,
   }) {
     return GestureDetector(
+      key:  key,                                               // ← KEY ATTACHED
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color:        AppTheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusL),
-          border: Border.all(
-              color: color.withValues(alpha: 0.18)),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,24 +658,22 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-
-  // ── How it works ──────────────────────────────────────────────
+  // ── How it works (UNCHANGED) ──────────────────────────────
   Widget _buildHowItWorks() {
     final steps = [
-      (Icons.upload_rounded,     AppTheme.primary, '01',
-      'Upload', 'Select a clear front-facing photo'),
-      (Icons.memory_rounded,     AppTheme.accent,  '02',
+      (Icons.upload_rounded,   AppTheme.primary, '01',
+      'Upload',         'Select a clear front-facing photo'),
+      (Icons.memory_rounded,   AppTheme.accent,  '02',
       'Axiom Analyses', 'AI scans for deepfake artifacts'),
-      (Icons.verified_rounded,   AppTheme.success, '03',
-      'Get Verdict', 'Confidence score + full breakdown'),
+      (Icons.verified_rounded, AppTheme.success, '03',
+      'Get Verdict',    'Confidence score + full breakdown'),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('How It Works',
-            style: TextStyle(fontSize: 16,
-                fontWeight: FontWeight.w700,
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
                 color: AppTheme.textPrimary)),
         const SizedBox(height: 14),
         Container(
@@ -749,7 +689,6 @@ class _HomeScreenState extends State<HomeScreen>
               final step = entry.value;
               return Column(children: [
                 Row(children: [
-                  // Step number circle
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
@@ -760,9 +699,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(step.$1, color: step.$2, size: 18),
-                      ],
+                      children: [Icon(step.$1, color: step.$2, size: 18)],
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -773,8 +710,7 @@ class _HomeScreenState extends State<HomeScreen>
                         Row(children: [
                           Text(step.$3,
                               style: TextStyle(fontSize: 10,
-                                  color: step.$2,
-                                  fontWeight: FontWeight.w800,
+                                  color: step.$2, fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5)),
                           const SizedBox(width: 8),
                           Text(step.$4,

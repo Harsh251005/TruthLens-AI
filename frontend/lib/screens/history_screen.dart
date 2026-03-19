@@ -1,7 +1,7 @@
 // screens/history_screen.dart
 // ============================================================
 // History screen — redesigned with summary stats header,
-// better cards, and VeriNet branding in detail sheet.
+// better cards, and Axiom branding in detail sheet.
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -353,7 +353,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   color: AppTheme.textPrimary)),
           const SizedBox(height: 8),
           const Text(
-            'Your VeriNet scan history will\nappear here after your first analysis.',
+            'Your Axiom scan history will\nappear here after your first analysis.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14,
                 color: AppTheme.textSecondary, height: 1.6),
@@ -545,7 +545,7 @@ class _ScanDetailSheet extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // ── VeriNet header ─────────────────────────────────
+          // ── Axiom header ─────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -14,18 +14,18 @@ class AppConstants {
   static const String profileEndpoint        = '$baseUrl/api/users/me';
   static const String updateEndpoint         = '$baseUrl/api/users/update';
   static const String updateProfileEndpoint  = '$baseUrl/api/users/update';
-  static const String verifyEmailEndpoint = '$baseUrl/api/auth/verify';
-  static const String resendOtpEndpoint   = '$baseUrl/api/auth/resend';
-  static const String deleteAccountEndpoint = '$baseUrl/api/account/delete';
-  static const String resetAccountEndpoint  = '$baseUrl/api/account/reset';
+  static const String verifyEmailEndpoint    = '$baseUrl/api/auth/verify';
+  static const String resendOtpEndpoint      = '$baseUrl/api/auth/resend';
+  static const String deleteAccountEndpoint  = '$baseUrl/api/account/delete';
+  static const String resetAccountEndpoint   = '$baseUrl/api/account/reset';
 
   // ── Avatar Endpoint ───────────────────────────────────────────
-  // NEW: PUT /api/users/avatar — saves chosen avatar to DB
   static const String updateAvatarEndpoint   = '$baseUrl/api/users/avatar';
 
-  static const String challengeEndpoint = '$baseUrl/api/challenge/round';
-  static const String saveScoreEndpoint    = '$baseUrl/api/challenge/score';
-  static const String leaderboardEndpoint  = '$baseUrl/api/challenge/leaderboard';
+  // ── Challenge / Leaderboard Endpoints ────────────────────────
+  static const String challengeEndpoint      = '$baseUrl/api/challenge/round';
+  static const String saveScoreEndpoint      = '$baseUrl/api/challenge/score';
+  static const String leaderboardEndpoint    = '$baseUrl/api/challenge/leaderboard';
 
   // ── Password Endpoints ────────────────────────────────────────
   static const String forgotEndpoint         = '$baseUrl/api/password/forgot';
@@ -34,15 +34,21 @@ class AppConstants {
   static const String resetPasswordEndpoint  = '$baseUrl/api/password/reset';
 
   // ── Detection Endpoints ───────────────────────────────────────
-  static const String detectEndpoint  = '$baseUrl/api/detect/';
-  static const String historyEndpoint = '$baseUrl/api/detect/history';
-  static const String statsEndpoint   = '$baseUrl/api/detect/stats';
-  static const String analyticsEndpoint = '$baseUrl/api/detect/analytics';
-  static const String badgesEndpoint = '$baseUrl/api/badges/';
+  static const String detectEndpoint         = '$baseUrl/api/detect/';
+  static const String historyEndpoint        = '$baseUrl/api/detect/history';
+  static const String statsEndpoint          = '$baseUrl/api/detect/stats';
+  static const String analyticsEndpoint      = '$baseUrl/api/detect/analytics';
+  static const String badgesEndpoint         = '$baseUrl/api/badges/';
 
   /// Builds delete URL for a single scan by ID
   static String deleteScanEndpoint(int scanId) =>
       '$baseUrl/api/detect/history/$scanId';
+
+  // ── News Endpoint ─────────────────────────────────────────────
+  // Points to our own backend which serves the shared server-side
+  // cache — no direct NewsAPI calls from Flutter anymore.
+  // REMOVED: newsApiKey and newsApiEndpoint (direct NewsAPI calls)
+  static const String newsEndpoint = '$baseUrl/api/news/';
 
   // ── Timeouts ──────────────────────────────────────────────────
   static const Duration requestTimeout = Duration(seconds: 30);
@@ -51,14 +57,4 @@ class AppConstants {
   // ── Validation ────────────────────────────────────────────────
   static const int minPasswordLength = 6;
   static const int maxNameLength     = 100;
-
-  // ── NewsAPI ───────────────────────────────────────────────────────
-  static const String newsApiKey      = '007e398a4c0b4630b6bbd24bfddb21d1';
-  static const String newsApiEndpoint =
-      'https://newsapi.org/v2/everything?'
-      'q=deepfake+OR+"deep+fake"+OR+"synthetic+media"'
-      '&language=en'
-      '&sortBy=publishedAt'
-      '&pageSize=20'
-      '&apiKey=$newsApiKey';
 }

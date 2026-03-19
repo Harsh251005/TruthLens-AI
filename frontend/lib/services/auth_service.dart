@@ -1,15 +1,3 @@
-// services/auth_service.dart
-// ============================================================
-// Handles all HTTP communication with the FastAPI backend.
-// Saves user session locally after successful auth.
-// Sends JWT token in headers for protected routes.
-//
-// AVATAR CHANGES (Step 8):
-//   • Added updateAvatar() — calls PUT /api/users/avatar
-//   • After success it updates StorageService so the new avatar
-//     is immediately reflected everywhere in the app
-// ============================================================
-
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
