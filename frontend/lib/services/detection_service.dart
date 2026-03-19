@@ -1,17 +1,3 @@
-// services/detection_service.dart
-// ============================================================
-// Handles all deepfake detection API calls:
-//   - Uploading image for detection
-//   - Fetching scan history
-//   - Deleting scans
-//   - Fetching stats
-//   - Fetching analytics
-//   - Fetching badges
-//   - Saving challenge scores
-//   - Fetching leaderboard
-//   - Checking badge progress for notifications
-// ============================================================
-
 import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -737,36 +723,5 @@ class DetectionService {
       return 'Detection timed out. Please try again.';
     }
     return 'An unexpected error occurred. Please try again.';
-  }
-
-  // ── Grad-CAM ──────────────────────────────────────────────────────
-  Future<String?> getGradCam(File imageFile) async {
-    try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return null;
-
-      final ext      = imageFile.path.split('.').last.toLowerCase();
-      final mimeType = _getMimeType(ext);
-
-      final request  = http.MultipartRequest(
-          'POST', Uri.parse(AppConstants.gradcamEndpoint));
-      request.headers['Authorization'] = 'Bearer ${savedUser.token}';
-      request.files.add(await http.MultipartFile.fromPath(
-        'file', imageFile.path,
-        contentType: MediaType('image', mimeType),
-      ));
-
-      final streamedResponse = await request.send()
-          .timeout(AppConstants.requestTimeout);
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return body['heatmap'] as String?;
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
   }
 }

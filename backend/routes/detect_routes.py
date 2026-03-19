@@ -1,13 +1,3 @@
-# routes/detect_routes.py
-# ============================================================
-# Deepfake detection endpoints:
-#   POST /api/detect/         → scan image, returns rich result
-#   GET  /api/detect/history  → past scans (protected)
-#   GET  /api/detect/stats    → scan statistics (protected)
-#   DELETE /api/detect/history/{id} → delete single scan
-#   DELETE /api/detect/history      → delete all scans
-# ============================================================
-
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from middleware.auth_middleware import get_current_user
 from models.schemas import (
@@ -361,55 +351,3 @@ def get_analytics(user_id: int = Depends(get_current_user)):
     finally:
         cursor.close()
         conn.close()
-
-# ── Grad-CAM ──────────────────────────────────────────────────────
-@router.post("/gradcam")
-async def get_gradcam(
-    file:    UploadFile = File(...),
-    user_id: int        = Depends(get_current_user),
-):
-    """
-    Generates a Grad-CAM heatmap showing which facial regions
-    Axiom focused on when making its decision.
-
-    Only called when the user explicitly requests it — not on
-    every scan. Returns base64-encoded PNG heatmap overlay.
-    """
-    if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type."
-        )
-
-    image_bytes = await file.read()
-
-    if len(image_bytes) > 10 * 1024 * 1024:
-        raise HTTPException(
-            status_code=400,
-            detail="Image too large."
-        )
-
-    try:
-        from services.gradcam_service import generate_gradcam
-        heatmap_b64 = generate_gradcam(image_bytes)
-        return {"heatmap": heatmap_b64}
-
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=503,
-            detail="Grad-CAM is currently unavailable — "
-                   "Keras model not found on server."
-        )
-
-    except MemoryError:
-        raise HTTPException(
-            status_code=503,
-            detail="Grad-CAM is unavailable due to memory limits. "
-                   "Try again later."
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Grad-CAM failed: {str(e)}"
-        )
