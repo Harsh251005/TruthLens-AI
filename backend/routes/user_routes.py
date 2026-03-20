@@ -6,14 +6,6 @@
 #   GET  /api/users/me         → fetch current user profile + avatar
 #   PUT  /api/users/update     → update name and/or password
 #   PUT  /api/users/avatar     → update user avatar
-#
-# FIX (persistence bug):
-#   /me now uses get_current_user (JWT → user_id only) and does
-#   its OWN explicit SELECT that includes avatar_type + avatar_data.
-#   Previously it used get_current_user_from_db whose SELECT was
-#   written before avatar columns existed — so it never returned them,
-#   causing the app to overwrite SharedPreferences with null avatar
-#   on every profile fetch (i.e. every app launch).
 # ============================================================
 
 import base64
@@ -36,16 +28,11 @@ def get_me(user_id: int = Depends(get_current_user)):
     """
     Protected route — returns the logged-in user's full profile,
     including avatar_type and avatar_data.
-
-    Uses get_current_user (JWT → user_id) then does its own SELECT
-    so it always includes all columns — including newly added ones
-    like avatar_type and avatar_data.
     """
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
     try:
-        # Explicit SELECT — always includes avatar columns
         cursor.execute(
             "SELECT id, name, email, created_at, avatar_type, avatar_data "
             "FROM users WHERE id = %s",
@@ -63,7 +50,7 @@ def get_me(user_id: int = Depends(get_current_user)):
                 "email":       user["email"],
                 "created_at":  str(user["created_at"]),
                 "avatar_type": user.get("avatar_type", "initial"),
-                "avatar_data": user.get("avatar_data"),   # None if not set
+                "avatar_data": user.get("avatar_data"),
             }
         }
 
@@ -110,6 +97,16 @@ def update_profile(
                 raise HTTPException(
                     status_code=401,
                     detail="Current password is incorrect"
+                )
+
+            # Reject if new password matches the current one.
+            # verify_password compares plaintext against the stored bcrypt hash.
+            # Placed AFTER verifying the current password — so we only reach
+            # this check when the user has already proven who they are.
+            if verify_password(data.new_password, user["password"]):
+                raise HTTPException(
+                    status_code=400,
+                    detail="New password must be different from your current password."
                 )
 
         # ── Build dynamic UPDATE query ─────────────────────────
@@ -168,12 +165,6 @@ def update_avatar(
 ):
     """
     Protected route — saves the user's chosen avatar to the DB.
-
-    Request body:
-      {
-        "avatar_type": "initial" | "predefined" | "custom",
-        "avatar_data": null | "<avatar_id>"
-      }
     """
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -183,11 +174,9 @@ def update_avatar(
         avatar_data = data.avatar_data
 
         if avatar_type == "initial":
-            # Reset — clear stored avatar data
             avatar_data = None
 
         elif avatar_type == "predefined":
-            # Must have an avatar ID string
             if not avatar_data or not avatar_data.strip():
                 raise HTTPException(
                     status_code=400,
@@ -195,7 +184,6 @@ def update_avatar(
                 )
             avatar_data = avatar_data.strip()
 
-        # ── Save to DB ─────────────────────────────────────────
         cursor.execute(
             "UPDATE users SET avatar_type = %s, avatar_data = %s WHERE id = %s",
             (avatar_type, avatar_data, user_id)
