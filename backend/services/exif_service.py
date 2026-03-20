@@ -11,7 +11,7 @@
 # ============================================================
 
 from PIL import Image
-from PIL.ExifTags import TAGS, GPSTAGS
+from PIL.ExifTags import TAGS
 import io
 from datetime import datetime
 
@@ -408,16 +408,31 @@ def _timestamp_gap_seconds(ts1: str, ts2: str) -> float | None:
 
 def _calculate_risk(suspicion_flags: list, exif: dict) -> str:
     """
-    Risk is only meaningful when there are genuine red flags.
-    Missing GPS or camera model alone is not suspicious.
+    Scores risk based on how many genuinely suspicious flags are present.
+
+    Critical keywords must match the actual flag strings generated above:
+      - "software"      → AI/editing software detected
+      - "ai"            → AI tool reference
+      - "deepfake"      → explicit deepfake reference
+      - "edited"        → editing tool reference
+      - "manipulated"   → manipulation reference
+      - "inconsistent"  → timestamp inconsistency
+      - "mismatch"      → any field mismatch
+      - "camera"        → no camera make/model found
+                          ("No camera make/model — real photos usually have this")
+      - "unusual"       → no EXIF on a JPEG
+                          ("unusual for a real JPEG photo")
     """
-    # Check for genuinely suspicious flags only
+    critical_keywords = [
+        "software", "edited", "ai", "deepfake",
+        "manipulated", "inconsistent", "mismatch",
+        "camera",    # catches "No camera make/model"
+        "unusual",   # catches "unusual for a real JPEG"
+    ]
+
     critical_flags = [
         f for f in suspicion_flags
-        if any(word in f.lower() for word in [
-            "software", "edited", "ai", "deepfake",
-            "manipulated", "inconsistent", "mismatch"
-        ])
+        if any(word in f.lower() for word in critical_keywords)
     ]
 
     if len(critical_flags) >= 2:
@@ -425,6 +440,7 @@ def _calculate_risk(suspicion_flags: list, exif: dict) -> str:
     elif len(critical_flags) == 1:
         return "MEDIUM"
     elif len(suspicion_flags) >= 3:
+        # Several minor flags together still warrant MEDIUM
         return "MEDIUM"
     else:
         return "LOW"
