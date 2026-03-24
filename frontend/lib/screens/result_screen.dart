@@ -9,10 +9,13 @@
 // ============================================================
 
 import 'dart:io';
+import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'package:share_plus/share_plus.dart';           // kept
-// screenshot import removed ─────────────────────────────────
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/detection_service.dart';
 import '../utils/app_theme.dart';
 
@@ -40,7 +43,10 @@ class _ResultScreenState extends State<ResultScreen>
   late Animation<double>   _progressAnim;
 
   bool _isSharing = false;
-  // ScreenshotController removed ──────────────────────────────
+
+  // Key attached to the off-screen share card RepaintBoundary.
+  // Used to capture the widget as a PNG image for sharing.
+  final GlobalKey _shareCardKey = GlobalKey();
 
   @override
   void initState() {
@@ -95,22 +101,36 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   // ── Share handler ──────────────────────────────────────────
-  // CHANGED: shares scanned image + text summary via share_plus.
-  // Screenshot capture removed since the package was removed.
+  // Captures the off-screen branded share card via RepaintBoundary,
+  // saves it as a temp PNG, then shares image + short caption.
   Future<void> _handleShare() async {
     setState(() => _isSharing = true);
     try {
-      final shareText =
-          'I just scanned this image with TruthLens AI!\n'
-          'Verdict: ${widget.result.verdict} '
-          '(${widget.result.confidence.toStringAsFixed(1)}% confidence)\n'
-          'EXIF Risk: ${widget.result.exifAnalysis.riskLevel}\n'
+      // Step 1: Find the RenderRepaintBoundary from the key
+      final boundary = _shareCardKey.currentContext?.findRenderObject()
+      as RenderRepaintBoundary?;
+      if (boundary == null) throw Exception('Share card not rendered');
+
+      // Step 2: Capture to image (3x pixel ratio for crisp output)
+      final image     = await boundary.toImage(pixelRatio: 3.0);
+      final byteData  = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes  = byteData!.buffer.asUint8List();
+
+      // Step 3: Write to temp file
+      final tempDir  = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/truthlens_result.png');
+      await tempFile.writeAsBytes(pngBytes);
+
+      // Step 4: Share image + caption
+      final caption =
+          '🔍 Scanned with TruthLens AI\n'
+          '${widget.result.isFake ? "⚠️ DEEPFAKE DETECTED" : "✅ AUTHENTIC IMAGE"} '
+          '— ${widget.result.confidence.toStringAsFixed(1)}% confidence\n'
           '#TruthLensAI #DeepfakeDetection';
 
-      // Share the original scanned image with the text summary
       await Share.shareXFiles(
-        [XFile(widget.imagePath)],
-        text: shareText,
+        [XFile(tempFile.path, mimeType: 'image/png')],
+        text: caption,
       );
     } catch (e) {
       if (mounted) {
@@ -159,85 +179,103 @@ class _ResultScreenState extends State<ResultScreen>
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppTheme.paddingL),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 8),
-
-            // ── Result card ─────────────────────────────────
-            // Screenshot wrapper removed — card UI unchanged
-            _buildShareCard(verdictColor, verdictIcon, verdictLabel),
-
-            const SizedBox(height: 16),
-
-            // ── AI Explanation card ──────────────────────────
-            FadeTransition(
-              opacity: _fadeAnim,
-              child:   _buildExplanationCard(),
+      body: Stack(
+        children: [
+          // ── Off-screen branded share card ─────────────────
+          // Positioned outside visible area so it renders but
+          // is never shown to the user. RepaintBoundary captures
+          // it as a PNG when the share button is tapped.
+          Positioned(
+            left: -2000,
+            top:  0,
+            child: RepaintBoundary(
+              key: _shareCardKey,
+              child: _buildBrandedShareCard(),
             ),
+          ),
 
-            const SizedBox(height: 16),
-
-            // ── EXIF Analysis card ───────────────────────────
-            FadeTransition(
-              opacity: _fadeAnim,
-              child:   _buildExifCard(),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── Tips card ────────────────────────────────────
-            FadeTransition(
-              opacity: _fadeAnim,
-              child:   _buildTipsCard(verdictColor),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Action buttons ───────────────────────────────
-            Row(
+          // ── Main scrollable content ────────────────────────
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(AppTheme.paddingL),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isSharing ? null : _handleShare,
-                    icon:      const Icon(Icons.share_rounded, size: 18),
-                    label:     const Text('Share Result',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      side:    const BorderSide(color: AppTheme.primary),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape:   RoundedRectangleBorder(
-                          borderRadius:
-                          BorderRadius.circular(AppTheme.radiusM)),
-                    ),
-                  ),
+                const SizedBox(height: 8),
+
+                // ── Result card ─────────────────────────────────
+                // Screenshot wrapper removed — card UI unchanged
+                _buildShareCard(verdictColor, verdictIcon, verdictLabel),
+
+                const SizedBox(height: 16),
+
+                // ── AI Explanation card ──────────────────────────
+                FadeTransition(
+                  opacity: _fadeAnim,
+                  child:   _buildExplanationCard(),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon:      const Icon(Icons.refresh_rounded, size: 18),
-                    label:     const Text('Scan Again',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                          BorderRadius.circular(AppTheme.radiusM)),
-                    ),
-                  ),
+
+                const SizedBox(height: 16),
+
+                // ── EXIF Analysis card ───────────────────────────
+                FadeTransition(
+                  opacity: _fadeAnim,
+                  child:   _buildExifCard(),
                 ),
+
+                const SizedBox(height: 16),
+
+                // ── Tips card ────────────────────────────────────
+                FadeTransition(
+                  opacity: _fadeAnim,
+                  child:   _buildTipsCard(verdictColor),
+                ),
+
+                const SizedBox(height: 24),
+
+                // ── Action buttons ───────────────────────────────
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _isSharing ? null : _handleShare,
+                        icon:      const Icon(Icons.share_rounded, size: 18),
+                        label:     const Text('Share Result',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primary,
+                          side:    const BorderSide(color: AppTheme.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape:   RoundedRectangleBorder(
+                              borderRadius:
+                              BorderRadius.circular(AppTheme.radiusM)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon:      const Icon(Icons.refresh_rounded, size: 18),
+                        label:     const Text('Scan Again',
+                            style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                              BorderRadius.circular(AppTheme.radiusM)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 32),
               ],
             ),
-
-            const SizedBox(height: 32),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -484,10 +522,12 @@ class _ResultScreenState extends State<ResultScreen>
                 Container(width: 1, height: 28,
                     color: AppTheme.surfaceBorder),
                 _buildFooterStat(
-                  label: 'EXIF Risk',
-                  value: widget.result.exifAnalysis.riskLevel,
-                  color: _getRiskColor(
-                      widget.result.exifAnalysis.riskLevel),
+                  label: 'EXIF Fields',
+                  // Show how many metadata fields were found — factual, not a risk label
+                  value: widget.result.exifAnalysis.hasExif
+                      ? '${widget.result.exifAnalysis.rawFields.length} found'
+                      : 'None',
+                  color: AppTheme.textSecondary,
                 ),
                 Container(width: 1, height: 28,
                     color: AppTheme.surfaceBorder),
@@ -561,10 +601,8 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // ── EXIF Analysis Card (UNCHANGED) ────────────────────────
   Widget _buildExifCard() {
-    final exif      = widget.result.exifAnalysis;
-    final riskColor = _getRiskColor(exif.riskLevel);
+    final exif = widget.result.exifAnalysis;
 
     return Container(
       width:   double.infinity,
@@ -573,38 +611,25 @@ class _ResultScreenState extends State<ResultScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header — no risk badge, neutral icon ──────────
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color:        riskColor.withValues(alpha: 0.15),
+                  color:        AppTheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.data_object_rounded,
-                    color: riskColor, size: 16),
+                child: const Icon(Icons.data_object_rounded,
+                    color: AppTheme.primary, size: 16),
               ),
               const SizedBox(width: 10),
               const Expanded(
-                child: Text('EXIF METADATA ANALYSIS',
+                child: Text('EXIF METADATA',
                     style: TextStyle(fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textSecondary,
                         letterSpacing: 1.0)),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color:        riskColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: riskColor.withValues(alpha: 0.4)),
-                ),
-                child: Text('${exif.riskLevel} RISK',
-                    style: TextStyle(fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: riskColor, letterSpacing: 0.5)),
               ),
             ],
           ),
@@ -635,8 +660,9 @@ class _ResultScreenState extends State<ResultScreen>
             const Divider(color: AppTheme.surfaceBorder, height: 20),
           ],
 
+          // Suspicion flags shown as neutral observations, not risk labels
           if (exif.suspicionFlags.isNotEmpty) ...[
-            const Text('FINDINGS',
+            const Text('OBSERVATIONS',
                 style: TextStyle(fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textSecondary,
@@ -647,13 +673,14 @@ class _ResultScreenState extends State<ResultScreen>
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.warning_amber_rounded,
-                      size: 14, color: riskColor),
+                  // Neutral info icon — these are observations, not verdicts
+                  const Icon(Icons.info_outline_rounded,
+                      size: 14, color: AppTheme.textSecondary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(flag,
-                        style: TextStyle(fontSize: 12,
-                            color: riskColor, height: 1.4)),
+                        style: const TextStyle(fontSize: 12,
+                            color: AppTheme.textSecondary, height: 1.4)),
                   ),
                 ],
               ),
@@ -663,20 +690,14 @@ class _ResultScreenState extends State<ResultScreen>
           if (!exif.hasExif) ...[
             Row(
               children: [
-                Icon(
-                  exif.riskLevel == 'LOW'
-                      ? Icons.info_outline_rounded
-                      : Icons.warning_amber_rounded,
-                  size: 14, color: riskColor,
-                ),
+                const Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppTheme.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    exif.riskLevel == 'LOW'
-                        ? 'Screenshot or web image — metadata not applicable'
-                        : exif.summary,
-                    style: TextStyle(fontSize: 12,
-                        color: riskColor, height: 1.4),
+                    exif.summary,
+                    style: const TextStyle(fontSize: 12,
+                        color: AppTheme.textSecondary, height: 1.4),
                   ),
                 ),
               ],
@@ -743,13 +764,273 @@ class _ResultScreenState extends State<ResultScreen>
     );
   }
 
-  // ── Helper ─────────────────────────────────────────────────
-  Color _getRiskColor(String riskLevel) {
-    switch (riskLevel) {
-      case 'HIGH':   return AppTheme.error;
-      case 'MEDIUM': return AppTheme.accent;
-      case 'LOW':    return AppTheme.success;
-      default:       return AppTheme.textSecondary;
+
+  // ── Branded Share Card ─────────────────────────────────────
+  // Rendered off-screen and captured as PNG via RepaintBoundary.
+  // Fixed 400×500 ensures consistent output on all devices.
+  Widget _buildBrandedShareCard() {
+    final isFake       = widget.result.isFake;
+    final verdictColor = isFake ? AppTheme.error : AppTheme.success;
+    final verdictLabel = isFake ? 'DEEPFAKE' : 'AUTHENTIC';
+    final verdictIcon  = isFake
+        ? Icons.dangerous_rounded
+        : Icons.verified_rounded;
+
+    // Show a couple of key EXIF fields in the card footer if available
+    final exif        = widget.result.exifAnalysis;
+    final cameraModel = exif.rawFields['Camera Model'] as String?;
+    final dateTaken   = exif.rawFields['Date Taken']   as String?;
+
+    return SizedBox(
+      width: 400, height: 460,
+      child: Container(
+        decoration: BoxDecoration(
+          color:        const Color(0xFF0A0E1A),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+              color: verdictColor.withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: Stack(
+          children: [
+
+            // ── Scan-line texture overlay ─────────────────────
+            Positioned.fill(
+              child: CustomPaint(painter: _ScanLinePainter()),
+            ),
+
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  // ── Logo row + verdict tag ────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      RichText(
+                        text: const TextSpan(children: [
+                          TextSpan(text: 'Truth',
+                              style: TextStyle(fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFF9FAFB))),
+                          TextSpan(text: 'Lens',
+                              style: TextStyle(fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF4F8EF7))),
+                          TextSpan(text: ' AI',
+                              style: TextStyle(fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFFF5A623))),
+                        ]),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: verdictColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: verdictColor.withValues(alpha: 0.3)),
+                        ),
+                        child: Text('Deepfake Detection',
+                            style: TextStyle(fontSize: 10,
+                                color: verdictColor,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.3)),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Scanned image with verdict overlay ────────
+                  // This is the key visual — shows the actual face
+                  // that was scanned so recipients know what was checked.
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      children: [
+                        Image.file(
+                          File(widget.imagePath),
+                          width:  double.infinity,
+                          height: 220,
+                          fit:    BoxFit.cover,
+                        ),
+
+                        // Dark gradient at bottom of image
+                        Positioned(
+                          bottom: 0, left: 0, right: 0,
+                          child: Container(
+                            height: 80,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin:  Alignment.topCenter,
+                                end:    Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  const Color(0xFF0A0E1A)
+                                      .withValues(alpha: 0.95),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        // Verdict badge pinned bottom-left on the image
+                        Positioned(
+                          bottom: 12, left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: verdictColor.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(verdictIcon,
+                                    color: Colors.white, size: 16),
+                                const SizedBox(width: 6),
+                                Text(verdictLabel,
+                                    style: const TextStyle(
+                                        color:      Colors.white,
+                                        fontSize:   14,
+                                        fontWeight: FontWeight.w900,
+                                        letterSpacing: 1.5)),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Confidence pinned bottom-right on the image
+                        Positioned(
+                          bottom: 12, right: 12,
+                          child: Text(
+                            '${widget.result.confidence.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                                fontSize:   22,
+                                fontWeight: FontWeight.w900,
+                                color:      verdictColor,
+                                height:     1),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ── Confidence bar ────────────────────────────
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value:           widget.result.confidence / 100,
+                      backgroundColor: verdictColor.withValues(alpha: 0.12),
+                      valueColor:      AlwaysStoppedAnimation<Color>(
+                          verdictColor),
+                      minHeight:       6,
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Thin divider ──────────────────────────────
+                  Container(height: 1, color: const Color(0xFF1F2937)),
+                  const SizedBox(height: 12),
+
+                  // ── EXIF snippet + Axiom badge ────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (cameraModel != null)
+                              _shareMetaRow(
+                                  Icons.camera_alt_outlined, cameraModel),
+                            if (dateTaken != null)
+                              _shareMetaRow(
+                                  Icons.calendar_today_outlined, dateTaken),
+                            if (cameraModel == null && dateTaken == null)
+                              _shareMetaRow(Icons.info_outline,
+                                  'No camera metadata'),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4F8EF7)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFF4F8EF7)
+                                  .withValues(alpha: 0.25)),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text('Axiom v1.0',
+                                style: TextStyle(fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF4F8EF7))),
+                            Text('Powered by',
+                                style: TextStyle(fontSize: 9,
+                                    color: Color(0xFF9CA3AF))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Small metadata row inside share card ───────────────────
+  Widget _shareMetaRow(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(children: [
+        Icon(icon, size: 11, color: const Color(0xFF9CA3AF)),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11,
+                  color: Color(0xFF9CA3AF))),
+        ),
+      ]),
+    );
+  }
+}
+
+
+// ── Scan-line texture painter ─────────────────────────────────
+// Draws subtle horizontal lines over the share card background
+// to give it a "tech screen" aesthetic.
+class _ScanLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.025)
+      ..strokeWidth = 1;
+
+    // Draw a horizontal line every 6px across the full card height
+    for (double y = 0; y < size.height; y += 6) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
+
+  @override
+  bool shouldRepaint(_ScanLinePainter oldDelegate) => false;
 }
