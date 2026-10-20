@@ -1,7 +1,15 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// services/auth_service.dart
+// ============================================================
+// Accounts on Firebase Auth + profile in Firestore (users/{uid}).
+// Replaces the old /api/auth, /api/users, /api/password and
+// /api/account endpoints. Email verification and password reset
+// use Firebase's emailed links instead of 6-digit codes.
+// ============================================================
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
-import '../utils/constants.dart';
+import 'firebase_refs.dart';
 import 'storage_service.dart';
 
 class AuthResult {
@@ -18,17 +26,7 @@ class AuthResult {
 
 class AuthService {
 
-  // ── Headers ───────────────────────────────────────────────────
-  static const Map<String, String> _headers = {
-    'Content-Type': 'application/json',
-    'Accept':       'application/json',
-  };
-
-  static Map<String, String> _authHeaders(String token) => {
-    'Content-Type':  'application/json',
-    'Accept':        'application/json',
-    'Authorization': 'Bearer $token',
-  };
+  FirebaseAuth get _auth => FirebaseRefs.auth;
 
 
   // ── Login ─────────────────────────────────────────────────────
@@ -37,41 +35,31 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(AppConstants.loginEndpoint),
-        headers: _headers,
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(AppConstants.requestTimeout);
+      final cred = await _auth.signInWithEmailAndPassword(
+        email: email, password: password,
+      );
+      final fbUser = cred.user!;
+      await fbUser.reload();
 
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        final user = UserModel.fromJson(body['user'] as Map<String, dynamic>);
-        await StorageService.saveUser(user);
-        return AuthResult(success: true, message: 'Login successful', user: user);
-      } else if (response.statusCode == 403 &&
-          body['detail'] == 'email_not_verified') {
-        // Return special message so Flutter navigates to verify screen
-        // Extract token + email from headers
-        final token = response.headers['x-user-token'] ?? '';
-        final userEmail = response.headers['x-user-email'] ?? email;
+      if (!(_auth.currentUser?.emailVerified ?? false)) {
+        // Stay signed in so the verify screen can resend the link
+        // and re-check status. Flutter navigates to verify screen.
         return AuthResult(
-          success:  false,
-          message:  'email_not_verified',
-          user:     UserModel(
-            id:         0,
-            name:       '',
-            email:      userEmail,
-            token:      token,
+          success: false,
+          message: 'email_not_verified',
+          user:    UserModel(
+            id:         fbUser.uid,
+            name:       fbUser.displayName ?? '',
+            email:      fbUser.email ?? email,
+            token:      '',
             isVerified: false,
           ),
         );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Login failed',
-        );
       }
+
+      final user = await _loadUser(fbUser);
+      await StorageService.saveUser(user);
+      return AuthResult(success: true, message: 'Login successful', user: user);
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -85,41 +73,43 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(AppConstants.signupEndpoint),
-        headers: _headers,
-        body: jsonEncode({'name': name, 'email': email, 'password': password}),
-      ).timeout(AppConstants.requestTimeout);
+      final cred = await _auth.createUserWithEmailAndPassword(
+        email: email, password: password,
+      );
+      final fbUser = cred.user!;
+      await fbUser.updateDisplayName(name);
 
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      await FirebaseRefs.userDoc(fbUser.uid).set({
+        'name':           name,
+        'email':          email,
+        'created_at':     FieldValue.serverTimestamp(),
+        'avatar_type':    'initial',
+        'avatar_data':    null,
+        'current_streak': 0,
+        'longest_streak': 0,
+        'last_scan_date': null,
+      });
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final userJson = Map<String, dynamic>.from(
-            body['user'] as Map<String, dynamic>);
+      await fbUser.sendEmailVerification();
 
-        // Backend doesn't return is_verified on signup — default to false
-        userJson.putIfAbsent('is_verified', () => false);
+      // ── CRITICAL: Do NOT save to SharedPreferences here ──────
+      // Saving an unverified user would let the app auto-login on
+      // restart, completely bypassing email verification.
+      // StorageService.saveUser() is called ONLY in verifyEmail()
+      // after the email link is confirmed.
+      // ─────────────────────────────────────────────────────────
 
-        final user = UserModel.fromJson(userJson);
-
-        // ── CRITICAL: Do NOT save to SharedPreferences here ──────
-        // Saving an unverified user would let the app auto-login on
-        // restart, completely bypassing email verification.
-        // StorageService.saveUser() is called ONLY in verifyEmail()
-        // after the OTP is confirmed — that is the single source of truth.
-        // ─────────────────────────────────────────────────────────
-
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Account created',
-          user:    user,
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Signup failed',
-        );
-      }
+      return AuthResult(
+        success: true,
+        message: 'Account created. Please verify your email.',
+        user:    UserModel(
+          id:         fbUser.uid,
+          name:       name,
+          email:      email,
+          token:      '',
+          isVerified: false,
+        ),
+      );
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -129,37 +119,19 @@ class AuthService {
   // ── Get Profile (Protected) ───────────────────────────────────
   Future<AuthResult> getProfile() async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
-        return const AuthResult(success: false, message: 'Not logged in');
-      }
-
-      final response = await http.get(
-        Uri.parse(AppConstants.profileEndpoint),
-        headers: _authHeaders(savedUser.token),
-      ).timeout(AppConstants.requestTimeout);
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        // Merge token from savedUser — /me doesn't return a token
-        final userJson = Map<String, dynamic>.from(
-            body['user'] as Map<String, dynamic>)
-          ..['token'] = savedUser.token;
-        final user = UserModel.fromJson(userJson);
-
-        // Persist the freshly fetched avatar so home screen can read it
-        await StorageService.saveUser(user);
-        return AuthResult(success: true, message: 'Success', user: user);
-
-      } else if (response.statusCode == 401) {
+      final fbUser = _auth.currentUser;
+      if (fbUser == null) {
         await StorageService.clearUser();
         return const AuthResult(
           success: false,
           message: 'Session expired. Please login again.',
         );
-      } else {
-        return const AuthResult(success: false, message: 'Failed to fetch profile');
       }
+
+      final user = await _loadUser(fbUser);
+      // Persist the freshly fetched avatar so home screen can read it
+      await StorageService.saveUser(user);
+      return AuthResult(success: true, message: 'Success', user: user);
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -173,53 +145,61 @@ class AuthService {
     String? newPassword,
   }) async {
     try {
+      final fbUser    = _auth.currentUser;
       final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
+      if (fbUser == null || savedUser == null) {
         return const AuthResult(success: false, message: 'Not logged in');
       }
 
-      final Map<String, dynamic> body = {};
-      if (name != null && name.isNotEmpty) body['name'] = name;
-      if (currentPassword != null) body['current_password'] = currentPassword;
-      if (newPassword != null) body['new_password'] = newPassword;
-
-      final response = await http.put(
-        Uri.parse(AppConstants.updateProfileEndpoint),
-        headers: _authHeaders(savedUser.token),
-        body: jsonEncode(body),
-      ).timeout(AppConstants.requestTimeout);
-
-      if (response.statusCode == 200) {
-        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
-        final updatedUser  = UserModel.fromJson(
-          responseBody['user'] as Map<String, dynamic>,
-        );
-
-        if (name != null) {
-          // Persist updated name while keeping everything else (incl. avatar)
-          await StorageService.saveUser(savedUser.copyWith(name: name));
-        }
-
-        return AuthResult(
-          success: true,
-          message: responseBody['message'] as String? ?? 'Updated successfully',
-          user:    updatedUser,
-        );
-      } else {
-        final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
-        return AuthResult(
-          success: false,
-          message: responseBody['detail'] as String? ?? 'Update failed',
-        );
+      final hasName     = name != null && name.trim().isNotEmpty;
+      final hasPassword = newPassword != null && newPassword.isNotEmpty;
+      if (!hasName && !hasPassword) {
+        return const AuthResult(
+            success: false, message: 'No fields provided to update');
       }
+
+      // ── Handle password change ─────────────────────────────
+      if (hasPassword) {
+        if (currentPassword == null || currentPassword.isEmpty) {
+          return const AuthResult(
+            success: false,
+            message: 'Current password is required to set a new password',
+          );
+        }
+        if (!await _reauthenticate(fbUser, currentPassword)) {
+          return const AuthResult(
+              success: false, message: 'Current password is incorrect');
+        }
+        if (newPassword == currentPassword) {
+          return const AuthResult(
+            success: false,
+            message: 'New password must be different from your current password.',
+          );
+        }
+        await fbUser.updatePassword(newPassword);
+      }
+
+      if (hasName) {
+        final trimmed = name.trim();
+        await FirebaseRefs.userDoc(fbUser.uid).update({'name': trimmed});
+        await fbUser.updateDisplayName(trimmed);
+        // Persist updated name while keeping everything else (incl. avatar)
+        await StorageService.saveUser(savedUser.copyWith(name: trimmed));
+      }
+
+      return AuthResult(
+        success: true,
+        message: 'Profile updated successfully',
+        user:    hasName ? savedUser.copyWith(name: name.trim()) : savedUser,
+      );
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
   }
 
 
-  // ── Update Avatar (Protected) — NEW ──────────────────────────
-  /// Sends the chosen avatar to the backend and updates local storage.
+  // ── Update Avatar (Protected) ─────────────────────────────────
+  /// Saves the chosen avatar to Firestore and updates local storage.
   ///
   /// [avatarType] — 'initial' | 'predefined' | 'custom'
   /// [avatarData] — null for 'initial', avatar ID for 'predefined',
@@ -229,37 +209,25 @@ class AuthService {
     String?         avatarData,
   }) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
+      final uid = FirebaseRefs.uid;
+      if (uid == null) {
         return const AuthResult(success: false, message: 'Not logged in');
       }
 
-      final response = await http.put(
-        Uri.parse(AppConstants.updateAvatarEndpoint),
-        headers: _authHeaders(savedUser.token),
-        body: jsonEncode({
-          'avatar_type': avatarType,
-          'avatar_data': avatarData,
-        }),
-      ).timeout(AppConstants.requestTimeout);
+      await FirebaseRefs.userDoc(uid).update({
+        'avatar_type': avatarType,
+        'avatar_data': avatarData,
+      });
 
-      if (response.statusCode == 200) {
-        // Persist new avatar locally so every screen sees it instantly
-        await StorageService.updateAvatar(
-          avatarType: avatarType,
-          avatarData: avatarData,
-        );
-        return const AuthResult(
-          success: true,
-          message: 'Avatar updated successfully',
-        );
-      } else {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Failed to update avatar',
-        );
-      }
+      // Persist new avatar locally so every screen sees it instantly
+      await StorageService.updateAvatar(
+        avatarType: avatarType,
+        avatarData: avatarData,
+      );
+      return const AuthResult(
+        success: true,
+        message: 'Avatar updated successfully',
+      );
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -267,61 +235,117 @@ class AuthService {
 
 
   // ── Forgot Password ───────────────────────────────────────────
+  /// Firebase emails a reset link; the user sets the new password
+  /// on Firebase's page, then logs in again.
   Future<AuthResult> forgotPassword({required String email}) async {
     try {
-      final response = await http.post(
-        Uri.parse(AppConstants.forgotPasswordEndpoint),
-        headers: _headers,
-        body: jsonEncode({'email': email}),
-      ).timeout(AppConstants.emailTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode == 200) {
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Reset code sent',
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Something went wrong',
-        );
-      }
+      await _auth.sendPasswordResetEmail(email: email);
+      return const AuthResult(
+        success: true,
+        message: 'Reset link sent. Check your email.',
+      );
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
   }
 
 
-  // ── Reset Password ────────────────────────────────────────────
-  Future<AuthResult> resetPassword({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
+  // ── Verify Email ──────────────────────────────────────────────
+  /// Checks whether the user has tapped the emailed link.
+  Future<AuthResult> verifyEmail() async {
     try {
-      final response = await http.post(
-        Uri.parse(AppConstants.resetPasswordEndpoint),
-        headers: _headers,
-        body: jsonEncode({
-          'email':        email,
-          'code':         code,
-          'new_password': newPassword,
-        }),
-      ).timeout(AppConstants.requestTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-      if (response.statusCode == 200) {
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Password reset successfully',
-        );
-      } else {
-        return AuthResult(
+      final fbUser = _auth.currentUser;
+      if (fbUser == null) {
+        return const AuthResult(
           success: false,
-          message: body['detail'] as String? ?? 'Reset failed',
+          message: 'Session expired. Please login again.',
         );
       }
+
+      await fbUser.reload();
+      final refreshed = _auth.currentUser!;
+      if (!refreshed.emailVerified) {
+        return const AuthResult(
+          success: false,
+          message: 'Not verified yet. Tap the link in the email, then try again.',
+        );
+      }
+
+      final user = await _loadUser(refreshed);
+      await StorageService.saveUser(user);
+      return AuthResult(success: true, message: 'Email verified', user: user);
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+  Future<AuthResult> resendVerification() async {
+    try {
+      final fbUser = _auth.currentUser;
+      if (fbUser == null) {
+        return const AuthResult(
+          success: false,
+          message: 'Session expired. Please login again.',
+        );
+      }
+      await fbUser.sendEmailVerification();
+      return const AuthResult(success: true, message: 'Verification link sent');
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+
+  // ── Delete Account ────────────────────────────────────────────
+  Future<AuthResult> deleteAccount({required String password}) async {
+    try {
+      final fbUser = _auth.currentUser;
+      if (fbUser == null) {
+        return const AuthResult(success: false, message: 'Not logged in');
+      }
+
+      if (!await _reauthenticate(fbUser, password)) {
+        return const AuthResult(success: false, message: 'Incorrect password');
+      }
+      await _deleteUserData(fbUser.uid);
+      await FirebaseRefs.userDoc(fbUser.uid).delete();
+      await fbUser.delete();
+
+      await StorageService.clearUser();
+      return const AuthResult(success: true, message: 'Account deleted');
+    } catch (e) {
+      return AuthResult(success: false, message: _friendlyError(e));
+    }
+  }
+
+
+  // ── Reset Account ─────────────────────────────────────────────
+  /// Clears scans, challenge scores, badges, streaks and avatar.
+  /// Keeps: name, email, password, verification.
+  Future<AuthResult> resetAccount() async {
+    try {
+      final uid = FirebaseRefs.uid;
+      if (uid == null) {
+        return const AuthResult(success: false, message: 'Not logged in');
+      }
+
+      await _deleteUserData(uid);
+      await FirebaseRefs.userDoc(uid).update({
+        'current_streak': 0,
+        'longest_streak': 0,
+        'last_scan_date': null,
+        'avatar_type':    'initial',
+        'avatar_data':    null,
+      });
+
+      await StorageService.updateAvatar(
+        avatarType: 'initial',
+        avatarData: null,
+      );
+      return const AuthResult(
+        success: true,
+        message: 'Account reset successfully. All data has been cleared.',
+      );
     } catch (e) {
       return AuthResult(success: false, message: _friendlyError(e));
     }
@@ -329,159 +353,68 @@ class AuthService {
 
 
   // ── Helpers ───────────────────────────────────────────────────
-  AuthResult _handleResponse(http.Response response) {
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final user = UserModel.fromJson(body['user'] as Map<String, dynamic>);
-      return AuthResult(
-        success: true,
-        message: body['message'] as String? ?? 'Success',
-        user:    user,
+  Future<UserModel> _loadUser(User fbUser) async {
+    final snap = await FirebaseRefs.userDoc(fbUser.uid).get();
+    final data = snap.data() ?? {};
+    return UserModel(
+      id:         fbUser.uid,
+      name:       (data['name'] as String?) ?? fbUser.displayName ?? '',
+      email:      fbUser.email ?? (data['email'] as String? ?? ''),
+      token:      '',
+      avatarType: (data['avatar_type'] as String?) ?? 'initial',
+      avatarData: data['avatar_data'] as String?,
+      isVerified: fbUser.emailVerified,
+    );
+  }
+
+  /// False when the password is wrong; other failures still throw.
+  Future<bool> _reauthenticate(User fbUser, String password) async {
+    try {
+      await fbUser.reauthenticateWithCredential(
+        EmailAuthProvider.credential(email: fbUser.email!, password: password),
       );
-    } else {
-      return AuthResult(
-        success: false,
-        message: body['detail'] as String? ?? 'Something went wrong',
-      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'invalid-credential' || e.code == 'wrong-password') {
+        return false;
+      }
+      rethrow;
     }
+  }
+
+  Future<void> _deleteUserData(String uid) async {
+    await FirebaseRefs.deleteAll(FirebaseRefs.scans(uid));
+    await FirebaseRefs.deleteAll(FirebaseRefs.earnedBadges(uid));
+    await FirebaseRefs.deleteAll(
+      FirebaseRefs.challengeScores.where('user_id', isEqualTo: uid),
+    );
   }
 
   String _friendlyError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
-      return 'Cannot reach server. Check your connection.';
-    } else if (msg.contains('TimeoutException')) {
-      return 'Request timed out. Please try again.';
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'invalid-credential':
+        case 'wrong-password':
+        case 'user-not-found':
+          return 'Incorrect email or password';
+        case 'email-already-in-use':
+          return 'An account with this email already exists';
+        case 'invalid-email':
+          return 'Please enter a valid email address';
+        case 'weak-password':
+          return 'Password is too weak';
+        case 'too-many-requests':
+          return 'Too many attempts. Please wait a minute and try again.';
+        case 'network-request-failed':
+          return 'No internet connection. Check your connection.';
+        case 'requires-recent-login':
+          return 'Please login again and retry.';
+      }
+      return e.message ?? 'Something went wrong';
+    }
+    if (e is FirebaseException && e.code == 'unavailable') {
+      return 'No internet connection. Check your connection.';
     }
     return 'An unexpected error occurred. Please try again.';
-  }
-
-  Future<AuthResult> verifyEmail({
-    required String email,
-    required String code,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse(AppConstants.verifyEmailEndpoint),
-        headers: _headers,
-        body: jsonEncode({'email': email, 'code': code}),
-      ).timeout(AppConstants.requestTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        final user = UserModel.fromJson(
-            body['user'] as Map<String, dynamic>);
-        await StorageService.saveUser(user);
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Email verified',
-          user:    user,
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Verification failed',
-        );
-      }
-    } catch (e) {
-      return AuthResult(success: false, message: _friendlyError(e));
-    }
-  }
-
-  Future<AuthResult> resendOtp({required String email}) async {
-    try {
-      final response = await http.post(
-        Uri.parse(AppConstants.resendOtpEndpoint),
-        headers: _headers,
-        body: jsonEncode({'email': email}),
-      ).timeout(AppConstants.requestTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'OTP sent',
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Failed to resend OTP',
-        );
-      }
-    } catch (e) {
-      return AuthResult(success: false, message: _friendlyError(e));
-    }
-  }
-
-  // ── Delete Account ────────────────────────────────────────────
-  Future<AuthResult> deleteAccount({required String password}) async {
-    try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
-        return const AuthResult(success: false, message: 'Not logged in');
-      }
-
-      final response = await http.delete(
-        Uri.parse(AppConstants.deleteAccountEndpoint),
-        headers: _authHeaders(savedUser.token),
-        body:    jsonEncode({'password': password}),
-      ).timeout(AppConstants.requestTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        await StorageService.clearUser();
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Account deleted',
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Failed to delete account',
-        );
-      }
-    } catch (e) {
-      return AuthResult(success: false, message: _friendlyError(e));
-    }
-  }
-
-
-// ── Reset Account ─────────────────────────────────────────────
-  Future<AuthResult> resetAccount() async {
-    try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
-        return const AuthResult(success: false, message: 'Not logged in');
-      }
-
-      final response = await http.post(
-        Uri.parse(AppConstants.resetAccountEndpoint),
-        headers: _authHeaders(savedUser.token),
-      ).timeout(AppConstants.requestTimeout);
-
-      final body = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        // Clear avatar locally since it was reset on backend
-        await StorageService.updateAvatar(
-          avatarType: 'initial',
-          avatarData: null,
-        );
-        return AuthResult(
-          success: true,
-          message: body['message'] as String? ?? 'Account reset',
-        );
-      } else {
-        return AuthResult(
-          success: false,
-          message: body['detail'] as String? ?? 'Failed to reset account',
-        );
-      }
-    } catch (e) {
-      return AuthResult(success: false, message: _friendlyError(e));
-    }
   }
 }

@@ -5,7 +5,6 @@ import '../utils/app_theme.dart';
 import '../utils/validators.dart';
 import '../widgets/custom_text_field.dart';
 import '../widgets/primary_button.dart';
-import 'reset_password_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -32,10 +31,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (result.success) {
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) =>
-            ResetPasswordScreen(email: _emailController.text.trim()),
+      // Firebase emails a reset link; the new password is set there.
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Reset link sent to ${_emailController.text.trim()}. '
+            'Check your email, then log in with the new password.'),
       ));
+      Navigator.of(context).pop();
     } else {
       setState(() => _errorMessage = result.message);
     }
@@ -102,7 +103,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                                 fontWeight: FontWeight.w800,
                                 color: AppTheme.textPrimary)),
                         const SizedBox(height: 4),
-                        Text("We'll send a 6-digit code to your email.",
+                        Text("We'll email you a link to reset your password.",
                             style: TextStyle(fontSize: 13,
                                 color: AppTheme.textSecondary.withValues(
                                     alpha: 0.8),
@@ -141,7 +142,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       const SizedBox(height: 14),
                     ],
                     PrimaryButton(
-                      label:     'Send Reset Code',
+                      label:     'Send Reset Link',
                       onPressed: _handleSubmit,
                       isLoading: _isLoading,
                     ),

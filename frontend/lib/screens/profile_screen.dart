@@ -272,6 +272,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     Navigator.of(context).pop();
     final picked = await _imagePicker.pickImage(
       source: ImageSource.gallery, imageQuality: 90,
+      // Keeps the base64 avatar well under Firestore's 1 MB doc limit
+      maxWidth: 512, maxHeight: 512,
     );
     if (picked == null || !mounted) return;
     final bytes = await picked.readAsBytes();
