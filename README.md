@@ -262,7 +262,16 @@ Everything runs on the phone; there is no server to start.
 
 **1. Model file.** Put `deepfake_detector_fp16.tflite` in `frontend/assets/models/`.
 It is not in git. If you only have the Keras model, convert it with
-`backend/convert_to_tflite.py`.
+`backend/convert_to_tflite.py`. Then check it on a connected phone:
+
+```bash
+cd frontend
+flutter test integration_test/on_device_test.dart -d <device-id>
+```
+
+This confirms the phone builds exactly the input the model was trained on
+(compared with Pillow), that the face check works, and that a face photo gets
+a REAL/FAKE verdict.
 
 **2. API keys (optional).**
 
