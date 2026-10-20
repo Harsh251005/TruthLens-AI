@@ -6,13 +6,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Leaderboard: any signed-in user reads, each user writes only their own rows
-    match /challenge_scores/{scoreId} {
+    // Leaderboard: one doc per player (id = uid). Any signed-in user
+    // reads; each user writes only their own doc.
+    match /challenge_scores/{uid} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null
-                    && request.resource.data.user_id == request.auth.uid;
-      allow update, delete: if request.auth != null
-                    && resource.data.user_id == request.auth.uid;
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
   }
 }

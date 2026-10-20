@@ -32,15 +32,21 @@ dependencies:
   # ── Notifications ─────────────────────────────────────────
   flutter_local_notifications: ^18.0.0  # streak reminders
   timezone: ^0.9.4                       # notification scheduling
-  firebase_core: ^5.0.0
-  firebase_auth: ^7.0.0
-  cloud_firestore: ^7.0.0
+
+  # ── Firebase (replaces the old backend) ───────────────────
+  firebase_core: ^5.0.0       # app init
+  firebase_auth: ^7.0.0       # accounts, email links
+  cloud_firestore: ^7.0.0     # history, badges, leaderboard
+
+  # ── On-device detection ───────────────────────────────────
+  tflite_flutter: ^0.12.1               # deepfake model inference
+  google_mlkit_face_detection: ^0.15.1  # face check before inference
+  exif: ^3.3.0                          # EXIF metadata analysis
 
   # ── Removed ───────────────────────────────────────────────
   # http_parser      — included inside http package
   # screenshot       — not used in any screen
   # workmanager      — no background tasks implemented
-  # google_mlkit_face_detection — detection done on backend, not device
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +58,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/models/
 
 flutter_launcher_icons:
   android: true

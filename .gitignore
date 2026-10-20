@@ -30,3 +30,6 @@ frontend/pubspec.lock
 *.iml
 # Local Android SDK path
 frontend/local.properties
+
+# ── App API keys (dart-define file) ──────
+frontend/env.json

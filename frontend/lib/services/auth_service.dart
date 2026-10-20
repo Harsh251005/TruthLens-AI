@@ -182,6 +182,7 @@ class AuthService {
       if (hasName) {
         final trimmed = name.trim();
         await FirebaseRefs.userDoc(fbUser.uid).update({'name': trimmed});
+        await _syncLeaderboard(fbUser.uid, {'name': trimmed});
         await fbUser.updateDisplayName(trimmed);
         // Persist updated name while keeping everything else (incl. avatar)
         await StorageService.saveUser(savedUser.copyWith(name: trimmed));
@@ -214,10 +215,9 @@ class AuthService {
         return const AuthResult(success: false, message: 'Not logged in');
       }
 
-      await FirebaseRefs.userDoc(uid).update({
-        'avatar_type': avatarType,
-        'avatar_data': avatarData,
-      });
+      final avatar = {'avatar_type': avatarType, 'avatar_data': avatarData};
+      await FirebaseRefs.userDoc(uid).update(avatar);
+      await _syncLeaderboard(uid, avatar);
 
       // Persist new avatar locally so every screen sees it instantly
       await StorageService.updateAvatar(
@@ -385,9 +385,14 @@ class AuthService {
   Future<void> _deleteUserData(String uid) async {
     await FirebaseRefs.deleteAll(FirebaseRefs.scans(uid));
     await FirebaseRefs.deleteAll(FirebaseRefs.earnedBadges(uid));
-    await FirebaseRefs.deleteAll(
-      FirebaseRefs.challengeScores.where('user_id', isEqualTo: uid),
-    );
+    await FirebaseRefs.challengeScores.doc(uid).delete();
+  }
+
+  /// Keeps the copy of name/avatar on the leaderboard in sync.
+  /// No-op when the user hasn't played a challenge yet.
+  Future<void> _syncLeaderboard(String uid, Map<String, dynamic> fields) async {
+    final ref = FirebaseRefs.challengeScores.doc(uid);
+    if ((await ref.get()).exists) await ref.update(fields);
   }
 
   String _friendlyError(Object e) {

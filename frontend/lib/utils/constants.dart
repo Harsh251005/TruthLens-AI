@@ -50,6 +50,14 @@ class AppConstants {
   // REMOVED: newsApiKey and newsApiEndpoint (direct NewsAPI calls)
   static const String newsEndpoint = '$baseUrl/api/news/';
 
+  // ── API Keys (from --dart-define-from-file=env.json) ─────────
+  // env.json is gitignored; see env.example.json. With no OpenAI
+  // key, scans use the built-in explanation text.
+  static const String openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
+  static const String openAiModel  = String.fromEnvironment(
+      'OPENAI_MODEL', defaultValue: 'gpt-4.1-mini');
+  static const String newsApiKey   = String.fromEnvironment('NEWS_API_KEY');
+
   // ── Timeouts ──────────────────────────────────────────────────
   static const Duration requestTimeout = Duration(seconds: 30);
   static const Duration emailTimeout   = Duration(seconds: 60);
