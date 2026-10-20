@@ -7,6 +7,7 @@ backend/*.h5
 backend/*.tflite
 backend/news_cache.json
 frontend/assets/models/*.tflite
+models/
 
 # ── Python ────────────────────────────────
 __pycache__/
