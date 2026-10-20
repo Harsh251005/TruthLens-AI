@@ -13,10 +13,13 @@
 
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'exif_service.dart';
+import 'pil_resize.dart';
 import 'explanation_service.dart';
 
 /// Thrown when no face is found — screens show [message] as-is.
@@ -67,28 +70,69 @@ class DetectorService {
   }
 
   // ── Preprocessing ─────────────────────────────────────────────
-  /// Resize to 224x224 and return raw float32 RGB pixel values.
+  /// Resize to 224x224 and return raw float32 RGB pixel values,
+  /// row-major (y, x, channel) — the tensor Pillow produced on the
+  /// backend (checked pixel-for-pixel by preprocess_parity_test).
   ///
   /// CRITICAL: No /255 normalization.
   /// EfficientNetB0 has built-in Rescaling — expects raw [0, 255] input.
   /// Dividing by 255 causes the model to always predict REAL.
-  static List<List<List<List<double>>>> _preprocess(Uint8List bytes) {
+  @visibleForTesting
+  static Future<Float32List> preprocessPixels(Uint8List bytes) async {
+    final (rgb, width, height) = await _decodeRgb(bytes);
+    // Pillow's resize() defaults to bicubic with antialiasing
+    final resized = PilResize.resizeRgb(rgb, width, height, _imageSize, _imageSize);
+    final out = Float32List(resized.length);
+    for (var i = 0; i < out.length; i++) {
+      out[i] = resized[i].toDouble();
+    }
+    return out;
+  }
+
+  /// 8-bit RGB pixels, alpha dropped (as Pillow's convert("RGB")).
+  ///
+  /// JPEGs use the platform decoder, which matches Pillow's libjpeg
+  /// output exactly; package:image's JPEG decoder does not. It also
+  /// applies the EXIF rotation, so phone photos reach the model
+  /// upright (the backend fed them sideways). Other formats use
+  /// package:image, which matches Pillow exactly for PNG.
+  static Future<(Uint8List, int, int)> _decodeRgb(Uint8List bytes) async {
+    final isJpeg = bytes.length > 2 && bytes[0] == 0xFF && bytes[1] == 0xD8;
+    if (isJpeg) {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final image = (await codec.getNextFrame()).image;
+      final data  = await image.toByteData(format: ui.ImageByteFormat.rawStraightRgba);
+      final rgba  = data!.buffer.asUint8List();
+      final rgb   = Uint8List(image.width * image.height * 3);
+      for (var i = 0, j = 0; i < rgba.length; i += 4) {
+        rgb[j++] = rgba[i];
+        rgb[j++] = rgba[i + 1];
+        rgb[j++] = rgba[i + 2];
+      }
+      final result = (rgb, image.width, image.height);
+      image.dispose();
+      codec.dispose();
+      return result;
+    }
+
     final decoded = img.decodeImage(bytes);
     if (decoded == null) {
       throw const FormatException('Could not read this image.');
     }
-    // Pillow's resize() defaults to bicubic
-    final resized = img.copyResize(
-      decoded,
-      width:         _imageSize,
-      height:        _imageSize,
-      interpolation: img.Interpolation.cubic,
-    );
+    final rgb = decoded
+        .convert(format: img.Format.uint8, numChannels: 3)
+        .getBytes(order: img.ChannelOrder.rgb);
+    return (rgb, decoded.width, decoded.height);
+  }
+
+  /// [preprocessPixels] shaped as the model input (1, 224, 224, 3).
+  static Future<List<List<List<List<double>>>>> _preprocess(Uint8List bytes) async {
+    final flat = await preprocessPixels(bytes);
     return [
       List.generate(_imageSize, (y) =>
         List.generate(_imageSize, (x) {
-          final p = resized.getPixel(x, y);
-          return [p.r.toDouble(), p.g.toDouble(), p.b.toDouble()];
+          final i = (y * _imageSize + x) * 3;
+          return [flat[i], flat[i + 1], flat[i + 2]];
         }),
       ),
     ];
@@ -106,7 +150,7 @@ class DetectorService {
     // ── Step 2: Model inference ─────────────────────────────────
     final bytes  = await file.readAsBytes();
     final model  = await _model();
-    final input  = _preprocess(bytes);
+    final input  = await _preprocess(bytes);
     final output = [
       [0.0],
     ];
