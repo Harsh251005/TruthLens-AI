@@ -17,11 +17,10 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import '../services/news_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/app_theme.dart';
-import '../utils/constants.dart';
 
 // ── Models ────────────────────────────────────────────────────
 
@@ -149,31 +148,24 @@ class _DeepfakeNewsScreenState extends State<DeepfakeNewsScreen>
       }
     }
 
-    // Fetch from backend
+    // Fetch from NewsAPI
     try {
-      final response = await http.get(
-        Uri.parse(AppConstants.newsEndpoint),
-        headers: {'Accept': 'application/json'},
-      ).timeout(const Duration(seconds: 20));
+      final body = await NewsService.fetchAll();
+      final cats = (body['categories'] as List? ?? [])
+          .map((c) => NewsCategory.fromJson(c as Map<String, dynamic>))
+          .where((c) => c.articles.isNotEmpty)
+          .toList();
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        final cats = (body['categories'] as List? ?? [])
-            .map((c) => NewsCategory.fromJson(c as Map<String, dynamic>))
-            .where((c) => c.articles.isNotEmpty)
-            .toList();
-
-        if (cats.isNotEmpty) {
-          await _saveClientCache(cats, body['fetched_at'] as String?);
-          _applyCategories(cats, body['fetched_at'] as String?, stale: false);
-          return;
-        }
+      if (cats.isNotEmpty) {
+        await _saveClientCache(cats, body['fetched_at'] as String?);
+        _applyCategories(cats, body['fetched_at'] as String?, stale: false);
+        return;
       }
     } catch (e) {
       debugPrint('News fetch error: $e');
     }
 
-    // Backend failed → try stale client cache
+    // Fetch failed (offline / daily quota used up) → try stale client cache
     final stale = await _loadClientCache(ignoreExpiry: true);
     if (stale != null) {
       _applyCategories(

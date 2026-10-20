@@ -19,9 +19,6 @@ void main() async {
     debugPrint('Notification init failed: $e');
   }
 
-  // ── Start server keep-alive ────────────────────────────────
-  ServerKeepAlive.start();
-
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor:                    Colors.transparent,
