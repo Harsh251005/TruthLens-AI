@@ -280,8 +280,17 @@ cp env.example.json env.json   # gitignored
 ```bash
 flutter pub get
 flutter run --dart-define-from-file=env.json
-flutter build apk --release --dart-define-from-file=env.json   # sideloadable APK
 ```
+
+**Release APK** (sideload; one APK per CPU type, `app-arm64-v8a-release.apk` fits almost every current phone):
+
+```bash
+flutter build apk --release --split-per-abi --dart-define-from-file=env.json
+```
+
+Release builds are signed with the keystore named in `android/key.properties`
+(gitignored; without it they fall back to debug keys). Keep the keystore safe:
+an APK signed with a different key cannot update the installed app.
 
 **Firebase** is already configured (`lib/firebase_options.dart`, project
 `truthlens-ai-hd`). To change the security rules:
