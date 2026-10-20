@@ -12,7 +12,6 @@
 // ============================================================
 
 import 'dart:io';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -169,8 +168,8 @@ class DetectorService {
       verdict:    verdict,
       confidence: confidence,
       rawScore:   rawScore,
-      exifFlags:  List<String>.from(exif['suspicion_flags'] as List),
-      exifRisk:   exif['risk_level'] as String,
+      exif:       exif,
+      image:      _imageFacts(bytes),
     );
 
     // ── Step 5: Tips ────────────────────────────────────────────
@@ -208,4 +207,26 @@ class DetectorService {
   }
 
   static double _round2(double v) => (v * 100).round() / 100;
+
+  /// Format, pixel size and file size — read from the header only.
+  static ImageFacts _imageFacts(Uint8List bytes) {
+    final String format;
+    if (bytes.length > 2 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+      format = 'JPEG';
+    } else if (bytes.length > 4 && bytes[0] == 0x89 && bytes[1] == 0x50) {
+      format = 'PNG';
+    } else if (bytes.length > 12 &&
+        String.fromCharCodes(bytes.sublist(8, 12)) == 'WEBP') {
+      format = 'WebP';
+    } else {
+      format = 'other';
+    }
+    final info = img.findDecoderForData(bytes)?.startDecode(bytes);
+    return ImageFacts(
+      format: format,
+      width:  info?.width,
+      height: info?.height,
+      bytes:  bytes.length,
+    );
+  }
 }

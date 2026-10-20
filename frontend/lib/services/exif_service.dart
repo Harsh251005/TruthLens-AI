@@ -109,8 +109,10 @@ class ExifService {
       // ── 3. Timestamp inconsistency check ────────────────────────
       final taken    = _parseExifDate(exif['Date Taken']);
       final modified = _parseExifDate(exif['Date Modified']);
-      if (taken != null && modified != null &&
-          modified.difference(taken).inSeconds.abs() > 86400) {
+      final editGap  = taken != null && modified != null
+          ? modified.difference(taken).inSeconds.abs()
+          : null;
+      if (editGap != null && editGap > 86400) {
         flags.add('Timestamps inconsistent — modified long after capture');
       }
 
@@ -121,6 +123,8 @@ class ExifService {
         'risk_level':      risk,
         'summary':         _buildSummary(exif, flags, risk),
         'has_exif':        true,
+        // Seconds between capture and last edit; null when either is missing
+        'edit_gap_seconds': editGap,
       };
     } catch (e) {
       return {

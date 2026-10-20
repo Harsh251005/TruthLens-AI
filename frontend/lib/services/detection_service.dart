@@ -584,7 +584,7 @@ class DetectionService {
       double avg(List<Map<String, dynamic>> list) => list.isEmpty
           ? 0
           : ((list.fold<double>(0,
-                      (sum, s) => sum + (s['confidence'] as num).toDouble()) /
+                      (total, s) => total + (s['confidence'] as num).toDouble()) /
                   list.length) * 10).round() / 10;
 
       // ── Weekly activity — last 7 days, always 7 bars ──────────
