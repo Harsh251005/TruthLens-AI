@@ -28,3 +28,5 @@ frontend/pubspec.lock
 .vscode/
 .idea/
 *.iml
+# Local Android SDK path
+frontend/local.properties

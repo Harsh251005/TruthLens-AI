@@ -240,18 +240,37 @@ Through TruthLens-AI, I gained experience with:
 
 ```text
 TruthLens-AI/
-│
-├── backend/
-│   ├── FastAPI application
-│   └── Model inference logic
-│
-├── frontend/
-│   └── Flutter application
-│
-├── database/
-│   └── For storing user login info
-│
-└── README.md
+├── backend/            FastAPI app
+│   ├── routes/         auth, users, detection, challenge, badges, news
+│   ├── services/       model inference, EXIF analysis, LLM explanations, news
+│   ├── static/         images for the real-vs-fake challenge
+│   └── setup.sql       MySQL schema
+└── frontend/           Flutter app (Android, iOS, web, desktop)
+```
+
+---
+
+## Run Locally
+
+**Backend** (Python 3.11, [uv](https://docs.astral.sh/uv/), MySQL):
+
+```bash
+cd backend
+uv sync
+cp .env.example .env          # database, JWT secret, Hugging Face model repo, API keys
+mysql -u root -p < setup.sql
+uv run uvicorn main:app --reload --port 8000
+```
+
+API docs are then at <http://localhost:8000/docs>.
+
+**App** (Flutter): point `baseUrl` in `frontend/lib/utils/constants.dart`
+at your backend, then:
+
+```bash
+cd frontend
+flutter pub get
+flutter run
 ```
 
 ---
