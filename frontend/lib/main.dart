@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'utils/app_theme.dart';
 import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Firebase (auth + Firestore replace the old backend) ────
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   try {
     await NotificationService().init();
