@@ -11,7 +11,8 @@
 // ============================================================
 
 class UserModel {
-  final int    id;
+  /// Firebase Auth uid.
+  final String id;
   final String name;
   final String email;
   final String token;
@@ -39,7 +40,7 @@ class UserModel {
   // ── Deserialize from API / SharedPreferences JSON ─────────────
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id:         json['id']          as int,
+      id:         json['id']          as String,
       name:       json['name']        as String,
       email:      json['email']       as String,
       // token may be absent in /me responses — fall back to empty string.
@@ -65,7 +66,7 @@ class UserModel {
   // ── Return a new UserModel with only the changed fields ───────
   // Usage: savedUser.copyWith(avatarType: 'predefined', avatarData: 'fox')
   UserModel copyWith({
-    int?    id,
+    String? id,
     String? name,
     String? email,
     String? token,

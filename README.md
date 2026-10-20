@@ -71,26 +71,31 @@ By combining image analysis with relevant news coverage, the platform aims to in
 
 ## System Architecture
 
+The app runs on the phone by itself — there is no server to deploy or pay for.
+
 ```text
-Flutter Mobile App
-        │
-        ▼
-    FastAPI Backend
-        │
-        ▼
- Deep Learning Model
-        │
-        ▼
- Prediction Results
+                Flutter app (on the phone)
+   ┌───────────────────────────────────────────────┐
+   │ face check (ML Kit) → TFLite model → EXIF      │
+   │                    → explanation (OpenAI*)     │
+   │ challenge images bundled in the app            │
+   └───────────────┬───────────────────────────────┘
+                   │
+       Firebase (free Spark plan)        NewsAPI*
+       • Auth: accounts, email links     • news feed
+       • Firestore: history, badges,
+         streaks, leaderboard
+
+   * optional — without a key the app uses built-in text / cached news
 ```
 
 ### Workflow
 
-1. User uploads an image through the Flutter application.
-2. The image is sent to the FastAPI backend.
-3. The backend preprocesses the image and passes it to the trained deep learning model.
-4. The model predicts whether the image appears authentic or manipulated.
-5. The prediction is returned to the user through the mobile application.
+1. User picks or captures an image in the Flutter app.
+2. ML Kit checks that the image contains a face.
+3. The image is resized to 224×224 and passed to the TFLite model on the device.
+4. The model predicts whether the image appears authentic or manipulated, and the EXIF metadata is analysed alongside it.
+5. The result is shown immediately and saved to the user's history in Firestore.
 
 ---
 
@@ -98,8 +103,8 @@ Flutter Mobile App
 
 ### Backend
 
-- Python
-- FastAPI
+- None at runtime — Firebase Auth + Cloud Firestore (Spark plan)
+- `backend/` (Python, FastAPI) is the original server, kept for reference and for model parity checks
 
 ### Machine Learning
 
@@ -114,8 +119,8 @@ Flutter Mobile App
 
 ### Deployment
 
-- TFLite Runtime
-- Mobile Deployment
+- On-device TFLite inference (`tflite_flutter`)
+- Sideloaded Android APK
 
 ---
 
@@ -240,38 +245,65 @@ Through TruthLens-AI, I gained experience with:
 
 ```text
 TruthLens-AI/
-├── backend/            FastAPI app
-│   ├── routes/         auth, users, detection, challenge, badges, news
-│   ├── services/       model inference, EXIF analysis, LLM explanations, news
-│   ├── static/         images for the real-vs-fake challenge
-│   └── setup.sql       MySQL schema
-└── frontend/           Flutter app (Android, iOS, web, desktop)
+├── frontend/                 Flutter app — everything the user runs
+│   ├── lib/services/         detection, EXIF, explanation, news, Firebase auth/data
+│   ├── assets/models/        the .tflite model (not in git — add it before building)
+│   ├── assets/challenge/     images for the real-vs-fake challenge
+│   └── env.example.json      API key template (copy to env.json)
+├── firestore.rules           Firestore security rules
+└── backend/                  original FastAPI server (legacy reference, not deployed)
 ```
 
 ---
 
 ## Run Locally
 
-**Backend** (Python 3.11, [uv](https://docs.astral.sh/uv/), MySQL):
+Everything runs on the phone; there is no server to start.
 
-```bash
-cd backend
-uv sync
-cp .env.example .env          # database, JWT secret, Hugging Face model repo, API keys
-mysql -u root -p < setup.sql
-uv run uvicorn main:app --reload --port 8000
-```
-
-API docs are then at <http://localhost:8000/docs>.
-
-**App** (Flutter): point `baseUrl` in `frontend/lib/utils/constants.dart`
-at your backend, then:
+**1. Model file.** Put `deepfake_detector_fp16.tflite` in `frontend/assets/models/`.
+It is not in git. If you only have the Keras model, convert it with
+`backend/convert_to_tflite.py`. Then check it on a connected phone:
 
 ```bash
 cd frontend
-flutter pub get
-flutter run
+flutter test integration_test/on_device_test.dart -d <device-id>
 ```
+
+This confirms the phone builds exactly the input the model was trained on
+(compared with Pillow), that the face check works, and that a face photo gets
+a REAL/FAKE verdict.
+
+**2. API keys (optional).**
+
+```bash
+cd frontend
+cp env.example.json env.json   # gitignored
+```
+
+- `OPENAI_API_KEY`: AI-written explanations. Leave it empty to use the built-in text.
+  Note that it ships inside the APK, so use a separate OpenAI project with a low usage limit.
+- `NEWS_API_KEY`: the news feed (NewsAPI free plan, 100 requests/day per key).
+
+**3. Run** (Flutter, Android device connected):
+
+```bash
+flutter pub get
+flutter run --dart-define-from-file=env.json
+```
+
+**Release APK** (sideload; one APK per CPU type, `app-arm64-v8a-release.apk` fits almost every current phone):
+
+```bash
+flutter build apk --release --split-per-abi --dart-define-from-file=env.json
+```
+
+Release builds are signed with the keystore named in `android/key.properties`
+(gitignored; without it they fall back to debug keys). Keep the keystore safe:
+an APK signed with a different key cannot update the installed app.
+
+**Firebase** is already configured (`lib/firebase_options.dart`, project
+`truthlens-ai-hd`). To change the security rules:
+`firebase deploy --only firestore:rules`.
 
 ---
 

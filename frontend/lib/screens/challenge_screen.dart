@@ -6,21 +6,18 @@
 // ============================================================
 
 import 'dart:async';
-import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
-import '../services/storage_service.dart';
 import '../utils/app_theme.dart';
-import '../utils/constants.dart';
 import '../services/detection_service.dart';
 import 'leaderboard_screen.dart';
 
 // ── Data model ────────────────────────────────────────────────────
 class ChallengeImage {
   final int    index;
-  final String url;
+  final String url;     // asset path
   final String answer; // 'REAL' or 'FAKE'
 
   const ChallengeImage({
@@ -51,6 +48,7 @@ class _ChallengeScreenState extends State<ChallengeScreen>
     with TickerProviderStateMixin {
 
   // ── Game data ─────────────────────────────────────────────────
+  static const _roundSize = 10;   // images per round
   List<ChallengeImage> _images    = [];
   int   _currentIndex  = 0;
   int   _score         = 0;
@@ -130,38 +128,50 @@ class _ChallengeScreenState extends State<ChallengeScreen>
   }
 
 
-  // ── Load 10 images from backend ───────────────────────────────
+  // ── Load 10 bundled images ────────────────────────────────────
+  // Port of GET /api/challenge/round: 4–6 real, the rest fake,
+  // picked at random from assets/challenge/{real,fake}/.
   Future<void> _loadRound() async {
     setState(() => _isLoading = true);
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return;
-
-      final response = await http.get(
-        Uri.parse(AppConstants.challengeEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
-
-      if (response.statusCode == 200) {
-        final body   = jsonDecode(response.body) as Map<String, dynamic>;
-        final images = (body['images'] as List)
-            .map((e) => ChallengeImage.fromJson(e as Map<String, dynamic>))
-            .toList();
-        setState(() {
-          _images       = images;
-          _currentIndex = 0;
-          _score        = 0;
-          _combo        = 0;
-          _maxCombo     = 0;
-          _isLoading    = false;
-          _isGameOver   = false;
-          _roundResults.clear();
-        });
-        _startRound();
+      final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+      final assets   = manifest.listAssets();
+      final real = assets.where((a) => a.startsWith('assets/challenge/real/')).toList();
+      final fake = assets.where((a) => a.startsWith('assets/challenge/fake/')).toList();
+      if (real.length < 5 || fake.length < 5) {
+        setState(() => _isLoading = false);
+        return;
       }
+
+      final random    = Random();
+      final realCount = 4 + random.nextInt(3);          // 4, 5 or 6
+      final fakeCount = _roundSize - realCount;
+      real.shuffle(random);
+      fake.shuffle(random);
+      final picked = [
+        for (final a in real.take(realCount)) {'url': a, 'answer': 'REAL'},
+        for (final a in fake.take(fakeCount)) {'url': a, 'answer': 'FAKE'},
+      ]..shuffle(random);
+
+      final images = [
+        for (var i = 0; i < picked.length; i++)
+          ChallengeImage(
+            index:  i,
+            url:    picked[i]['url']!,
+            answer: picked[i]['answer']!,
+          ),
+      ];
+      setState(() {
+        _images       = images;
+        _currentIndex = 0;
+        _score        = 0;
+        _combo        = 0;
+        _maxCombo     = 0;
+        _isLoading    = false;
+        _isGameOver   = false;
+        _roundResults.clear();
+      });
+      _startRound();
     } catch (e) {
       setState(() => _isLoading = false);
     }
@@ -549,17 +559,9 @@ class _ChallengeScreenState extends State<ChallengeScreen>
         borderRadius: BorderRadius.circular(AppTheme.radiusL - 1),
         child: Stack(fit: StackFit.expand, children: [
           // The face image
-          Image.network(
+          Image.asset(
             image.url,
             fit: BoxFit.cover,
-            loadingBuilder: (_, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                color: AppTheme.surface,
-                child: const Center(child: CircularProgressIndicator(
-                    color: AppTheme.primary, strokeWidth: 2)),
-              );
-            },
             errorBuilder: (_, _, _) => Container(
               color: AppTheme.surface,
               child: const Center(child: Icon(Icons.broken_image,

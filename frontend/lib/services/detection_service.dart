@@ -1,9 +1,16 @@
+// services/detection_service.dart
+// ============================================================
+// Scans, history, stats, analytics, badges and leaderboard.
+// Detection runs on the device (detector_service.dart); data
+// lives in Firestore (firebase_refs.dart). Logic ported from
+// backend/routes/{detect,badges,challenge}_routes.py — results
+// are built in the old JSON shape and parsed by the models below.
+// ============================================================
+
 import 'dart:io';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import '../utils/constants.dart';
-import '../services/storage_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'detector_service.dart';
+import 'firebase_refs.dart';
 import 'notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -72,7 +79,7 @@ class DetectionResult {
 
 // ── Scan History Item Model ───────────────────────────────────────
 class ScanHistoryItem {
-  final int    id;
+  final String id;
   final String imageName;
   final String verdict;
   final double confidence;
@@ -88,7 +95,7 @@ class ScanHistoryItem {
 
   factory ScanHistoryItem.fromJson(Map<String, dynamic> json) =>
       ScanHistoryItem(
-        id:         json['id']          as int,
+        id:         json['id']          as String,
         imageName:  json['image_name']  as String,
         verdict:    json['verdict']     as String,
         confidence: (json['confidence'] as num).toDouble(),
@@ -285,7 +292,7 @@ class BadgesData {
 // ── Leaderboard Entry Model ───────────────────────────────────────
 class LeaderboardEntry {
   final int     rank;
-  final int     userId;
+  final String  userId;
   final String  name;
   final String  avatarType;
   final String? avatarData;
@@ -313,7 +320,7 @@ class LeaderboardEntry {
   factory LeaderboardEntry.fromJson(Map<String, dynamic> json) =>
       LeaderboardEntry(
         rank:       json['rank']        as int,
-        userId:     json['user_id']     as int,
+        userId:     json['user_id']     as String,
         name:       json['name']        as String,
         avatarType: json['avatar_type'] as String? ?? 'initial',
         avatarData: json['avatar_data'] as String?,
@@ -386,79 +393,130 @@ class LeaderboardData {
 }
 
 
+// ── Badge catalogue ───────────────────────────────────────────────
+// Single source of truth for all badges.
+// 'progress' and 'earned' are computed at runtime from scan data.
+const List<Map<String, dynamic>> _badgeCatalogue = [
+  // ── Scan milestone badges ─────────────────────────────────────
+  {'id': 'first_step', 'name': 'First Step', 'description': 'Complete your very first scan', 'emoji': '🔍', 'category': 'scans', 'target': 1},
+  {'id': 'rookie',     'name': 'Rookie',     'description': 'Complete 10 scans',             'emoji': '🎯', 'category': 'scans', 'target': 10},
+  {'id': 'detective',  'name': 'Detective',  'description': 'Complete 25 scans',             'emoji': '🕵️', 'category': 'scans', 'target': 25},
+  {'id': 'expert',     'name': 'Expert',     'description': 'Complete 50 scans',             'emoji': '⭐', 'category': 'scans', 'target': 50},
+  {'id': 'master',     'name': 'Master',     'description': 'Complete 100 scans',            'emoji': '🏆', 'category': 'scans', 'target': 100},
+  // ── Fake hunter badges ────────────────────────────────────────
+  {'id': 'fake_hunter',     'name': 'Fake Hunter',     'description': 'Catch 5 deepfakes',          'emoji': '🎭', 'category': 'fakes', 'target': 5},
+  {'id': 'deepfake_buster', 'name': 'Deepfake Buster', 'description': 'Catch 20 deepfakes',         'emoji': '💥', 'category': 'fakes', 'target': 20},
+  {'id': 'truth_seeker',    'name': 'Truth Seeker',    'description': 'Verify 10 authentic images', 'emoji': '✅', 'category': 'real',  'target': 10},
+  // ── Streak badges ─────────────────────────────────────────────
+  {'id': 'on_fire',     'name': 'On Fire',     'description': 'Scan for 3 consecutive days',  'emoji': '🔥', 'category': 'streak', 'target': 3},
+  {'id': 'unstoppable', 'name': 'Unstoppable', 'description': 'Scan for 7 consecutive days',  'emoji': '⚡', 'category': 'streak', 'target': 7},
+  {'id': 'dedicated',   'name': 'Dedicated',   'description': 'Scan for 14 consecutive days', 'emoji': '💎', 'category': 'streak', 'target': 14},
+  {'id': 'legend',      'name': 'Legend',      'description': 'Scan for 30 consecutive days', 'emoji': '👑', 'category': 'streak', 'target': 30},
+];
+
+
 // ── Detection Service ─────────────────────────────────────────────
 class DetectionService {
 
   // ── Detect Image ──────────────────────────────────────────────
   Future<DetectionResponse> detectImage(File imageFile) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) {
+      final uid = FirebaseRefs.uid;
+      if (uid == null) {
         return const DetectionResponse(
             success: false, message: 'Not logged in');
       }
 
-      final ext      = imageFile.path.split('.').last.toLowerCase();
-      final mimeType = _getMimeType(ext);
+      // ── Run detection pipeline ────────────────────────────
+      final json   = await DetectorService.predict(imageFile);
+      final result = DetectionResult.fromJson(json);
 
-      final request = http.MultipartRequest(
-          'POST', Uri.parse(AppConstants.detectEndpoint));
-      request.headers['Authorization'] = 'Bearer ${savedUser.token}';
-      request.files.add(await http.MultipartFile.fromPath(
-        'file', imageFile.path,
-        contentType: MediaType('image', mimeType),
-      ));
+      // ── Save scan + update streak ─────────────────────────
+      // Offline, Firestore queues the writes and these futures wait
+      // for the server, so cap the wait — the result shows either way.
+      await _saveScan(uid, imageFile, result)
+          .timeout(const Duration(seconds: 5), onTimeout: () {});
 
-      final streamedResponse =
-      await request.send().timeout(AppConstants.requestTimeout);
-      final response = await http.Response.fromStream(streamedResponse);
-      final body     = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode == 200) {
-        return DetectionResponse(
-          success: true,
-          message: 'Detection successful',
-          result:  DetectionResult.fromJson(body),
-        );
-      } else if (response.statusCode == 422) {
-        return DetectionResponse(
-          success: false,
-          message: body['detail'] as String? ?? 'No human face detected.',
-        );
-      } else {
-        return DetectionResponse(
-          success: false,
-          message: body['detail'] as String? ?? 'Detection failed',
-        );
-      }
+      return DetectionResponse(
+        success: true,
+        message: 'Detection successful',
+        result:  result,
+      );
+    } on NoFaceException catch (e) {
+      return DetectionResponse(success: false, message: e.message);
+    } on ModelMissingException {
+      return const DetectionResponse(
+        success: false,
+        message: 'Detection model is missing from this build.',
+      );
     } catch (e) {
       return DetectionResponse(success: false, message: _friendlyError(e));
     }
   }
 
+  Future<void> _saveScan(String uid, File file, DetectionResult r) async {
+    try {
+      // Writes are not awaited: they apply to the local cache at once
+      // and sync when online (an awaited write waits for the server).
+      FirebaseRefs.scans(uid).add({
+        'image_name': file.uri.pathSegments.isNotEmpty
+            ? file.uri.pathSegments.last
+            : 'uploaded_image',
+        'verdict':    r.verdict,
+        'confidence': r.confidence,
+        'raw_score':  r.rawScore,
+        'scanned_at': Timestamp.now(),
+      });
+
+      final userRef = FirebaseRefs.userDoc(uid);
+      final user    = (await userRef.get()).data() ?? {};
+      final today   = _dateKey(DateTime.now());
+      final yesterday =
+          _dateKey(DateTime.now().subtract(const Duration(days: 1)));
+      final lastDate = user['last_scan_date'] as String?;
+      final streak   = (user['current_streak'] as int?) ?? 0;
+      final longest  = (user['longest_streak'] as int?) ?? 0;
+
+      final int newStreak;
+      if (lastDate == null) {
+        newStreak = 1;                 // First scan ever
+      } else if (lastDate == today) {
+        newStreak = streak;            // Already scanned today
+      } else if (lastDate == yesterday) {
+        newStreak = streak + 1;        // Scanned yesterday — extend
+      } else {
+        newStreak = 1;                 // Gap — reset
+      }
+
+      userRef.update({
+        'current_streak': newStreak,
+        'last_scan_date': today,
+        'longest_streak': newStreak > longest ? newStreak : longest,
+      });
+    } catch (_) {}
+  }
+
 
   // ── Scan History ──────────────────────────────────────────────
-  Future<List<ScanHistoryItem>> getHistory() async {
+  Future<List<ScanHistoryItem>> getHistory({int limit = 20}) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return [];
+      final uid = FirebaseRefs.uid;
+      if (uid == null) return [];
 
-      final response = await http.get(
-        Uri.parse(AppConstants.historyEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
-
-      if (response.statusCode == 200) {
-        final body  = jsonDecode(response.body) as Map<String, dynamic>;
-        final scans = body['scans'] as List;
-        return scans
-            .map((s) => ScanHistoryItem.fromJson(s as Map<String, dynamic>))
-            .toList();
-      }
-      return [];
+      final snap = await FirebaseRefs.scans(uid)
+          .orderBy('scanned_at', descending: true)
+          .limit(limit)
+          .get();
+      return snap.docs.map((d) {
+        final data = d.data();
+        return ScanHistoryItem.fromJson({
+          'id':         d.id,
+          'image_name': data['image_name'],
+          'verdict':    data['verdict'],
+          'confidence': data['confidence'],
+          'scanned_at': _timestampString(data['scanned_at']),
+        });
+      }).toList();
     } catch (_) {
       return [];
     }
@@ -466,20 +524,12 @@ class DetectionService {
 
 
   // ── Delete Single Scan ────────────────────────────────────────
-  Future<bool> deleteScan(int scanId) async {
+  Future<bool> deleteScan(String scanId) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return false;
-
-      final response = await http.delete(
-        Uri.parse(AppConstants.deleteScanEndpoint(scanId)),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
-
-      return response.statusCode == 200;
+      final uid = FirebaseRefs.uid;
+      if (uid == null) return false;
+      await FirebaseRefs.scans(uid).doc(scanId).delete();
+      return true;
     } catch (_) {
       return false;
     }
@@ -489,18 +539,10 @@ class DetectionService {
   // ── Delete All History ────────────────────────────────────────
   Future<bool> deleteHistory() async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return false;
-
-      final response = await http.delete(
-        Uri.parse(AppConstants.historyEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
-
-      return response.statusCode == 200;
+      final uid = FirebaseRefs.uid;
+      if (uid == null) return false;
+      await FirebaseRefs.deleteAll(FirebaseRefs.scans(uid));
+      return true;
     } catch (_) {
       return false;
     }
@@ -510,22 +552,16 @@ class DetectionService {
   // ── Stats ─────────────────────────────────────────────────────
   Future<ScanStats?> getStats() async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return null;
-
-      final response = await http.get(
-        Uri.parse(AppConstants.statsEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return ScanStats.fromJson(body);
-      }
-      return null;
+      final scans = await _allScans();
+      if (scans == null) return null;
+      return ScanStats.fromJson({
+        'total_scans':  scans.length,
+        'total_real':   scans.where((s) => s['verdict'] == 'REAL').length,
+        'total_fake':   scans.where((s) => s['verdict'] == 'FAKE').length,
+        'last_scanned': scans.isEmpty
+            ? null
+            : _timestampString(scans.first['scanned_at']),
+      });
     } catch (_) {
       return null;
     }
@@ -535,22 +571,83 @@ class DetectionService {
   // ── Analytics ─────────────────────────────────────────────────
   Future<AnalyticsData?> getAnalytics() async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return null;
+      final scans = await _allScans();   // newest first
+      if (scans == null) return null;
 
-      final response = await http.get(
-        Uri.parse(AppConstants.analyticsEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
+      // ── Core counts ───────────────────────────────────────────
+      final real = scans.where((s) => s['verdict'] == 'REAL').toList();
+      final fake = scans.where((s) => s['verdict'] == 'FAKE').toList();
+      final totalScans = scans.length;
+      final totalReal  = real.length;
+      final totalFake  = fake.length;
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return AnalyticsData.fromJson(body);
+      double avg(List<Map<String, dynamic>> list) => list.isEmpty
+          ? 0
+          : ((list.fold<double>(0,
+                      (total, s) => total + (s['confidence'] as num).toDouble()) /
+                  list.length) * 10).round() / 10;
+
+      // ── Weekly activity — last 7 days, always 7 bars ──────────
+      const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final dailyActivity = List.generate(7, (i) {
+        final day = today.subtract(Duration(days: 6 - i));
+        final onDay = scans.where((s) {
+          final t = (s['scanned_at'] as Timestamp).toDate();
+          return t.year == day.year && t.month == day.month && t.day == day.day;
+        }).toList();
+        return {
+          'date':       dayLabels[day.weekday - 1],
+          'total':      onDay.length,
+          'real_count': onDay.where((s) => s['verdict'] == 'REAL').length,
+          'fake_count': onDay.where((s) => s['verdict'] == 'FAKE').length,
+        };
+      });
+
+      // ── Last 10 verdict trend, oldest → newest ────────────────
+      final verdictTrend = scans
+          .take(10)
+          .map((s) => s['verdict'] as String)
+          .toList()
+          .reversed
+          .toList();
+
+      // ── Personalized insight ──────────────────────────────────
+      final String insight;
+      final last3 = verdictTrend.length >= 3
+          ? verdictTrend.sublist(verdictTrend.length - 3)
+          : const <String>[];
+      if (totalScans == 0) {
+        insight = 'Run your first scan to start building your analytics!';
+      } else if (totalFake == 0) {
+        insight = "You've scanned $totalScans image(s) — all authentic so far. Stay vigilant!";
+      } else if (totalFake >= 10) {
+        insight = "Impressive! You've caught $totalFake deepfakes. You're a pro detector! 🎯";
+      } else if (totalScans >= 20) {
+        final pct = (totalFake / totalScans * 100).round();
+        insight = '$pct% of images you scanned were deepfakes. The internet needs you! 🛡️';
+      } else if (last3.isNotEmpty && last3.every((v) => v == 'FAKE')) {
+        insight = 'Last 3 scans were all deepfakes — stay alert out there! 🚨';
+      } else if (last3.isNotEmpty && last3.every((v) => v == 'REAL')) {
+        insight = 'Last 3 scans were all authentic. Your sources look trustworthy! ✅';
+      } else {
+        insight = "You've caught $totalFake deepfake(s) out of $totalScans scan(s). Keep going! 💪";
       }
-      return null;
+
+      return AnalyticsData.fromJson({
+        'total_scans':         totalScans,
+        'total_real':          totalReal,
+        'total_fake':          totalFake,
+        'avg_confidence_real': avg(real),
+        'avg_confidence_fake': avg(fake),
+        'daily_activity':      dailyActivity,
+        'verdict_trend':       verdictTrend,
+        'insight':             insight,
+        'last_scanned': scans.isEmpty
+            ? null
+            : _timestampString(scans.first['scanned_at']),
+      });
     } catch (_) {
       return null;
     }
@@ -560,29 +657,72 @@ class DetectionService {
   // ── Badges ────────────────────────────────────────────────────
   Future<BadgesData?> getBadges() async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return null;
+      final uid   = FirebaseRefs.uid;
+      final scans = await _allScans();
+      if (uid == null || scans == null) return null;
 
-      final response = await http.get(
-        Uri.parse(AppConstants.badgesEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
+      final user          = (await FirebaseRefs.userDoc(uid).get()).data() ?? {};
+      final currentStreak = (user['current_streak'] as int?) ?? 0;
+      final longestStreak = (user['longest_streak'] as int?) ?? 0;
+      final totalScans    = scans.length;
+      final totalFake     = scans.where((s) => s['verdict'] == 'FAKE').length;
+      final totalReal     = scans.where((s) => s['verdict'] == 'REAL').length;
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return BadgesData.fromJson(body);
+      // ── Permanently earned badges ─────────────────────────
+      final earnedSnap = await FirebaseRefs.earnedBadges(uid).get();
+      final permanentlyEarned = earnedSnap.docs.map((d) => d.id).toSet();
+
+      final badges      = <Map<String, dynamic>>[];
+      final newEarnings = <String>[];
+      for (final b in _badgeCatalogue) {
+        final category = b['category'] as String;
+        final target   = b['target'] as int;
+        final progress = switch (category) {
+          'scans'  => totalScans,
+          'fakes'  => totalFake,
+          'real'   => totalReal,
+          // Use longest_streak so badge stays earned after a reset
+          'streak' => longestStreak,
+          _        => 0,
+        };
+        final isEarned = progress >= target || permanentlyEarned.contains(b['id']);
+        if (isEarned && !permanentlyEarned.contains(b['id'])) {
+          newEarnings.add(b['id'] as String);
+        }
+        // Show current_streak on the progress bar for streak badges
+        final shown = category == 'streak' ? currentStreak : progress;
+        badges.add({
+          ...b,
+          'earned':   isEarned,
+          'progress': shown < target ? shown : target,
+        });
       }
-      return null;
+
+      // ── Persist newly earned badges ───────────────────────
+      if (newEarnings.isNotEmpty) {
+        final batch = FirebaseRefs.db.batch();
+        for (final id in newEarnings) {
+          batch.set(FirebaseRefs.earnedBadges(uid).doc(id),
+              {'earned_at': FieldValue.serverTimestamp()});
+        }
+        await batch.commit();
+      }
+
+      return BadgesData.fromJson({
+        'badges':         badges,
+        'earned_count':   badges.where((b) => b['earned'] == true).length,
+        'total_count':    badges.length,
+        'current_streak': currentStreak,
+        'longest_streak': longestStreak,
+      });
     } catch (_) {
       return null;
     }
   }
 
-
   // ── Save Challenge Score ──────────────────────────────────────
+  /// Saves only if it beats the user's existing best.
+  /// Each user has one doc: challenge_scores/{uid}.
   Future<bool> saveScore({
     required int    score,
     required int    total,
@@ -591,26 +731,29 @@ class DetectionService {
     required String grade,
   }) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return false;
+      final uid = FirebaseRefs.uid;
+      if (uid == null) return false;
 
-      final response = await http.post(
-        Uri.parse(AppConstants.saveScoreEndpoint),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Content-Type':  'application/json',
-          'Accept':        'application/json',
-        },
-        body: jsonEncode({
-          'score':     score,
-          'total':     total,
-          'accuracy':  accuracy,
-          'max_combo': maxCombo,
-          'grade':     grade,
-        }),
-      ).timeout(AppConstants.requestTimeout);
+      final ref      = FirebaseRefs.challengeScores.doc(uid);
+      final existing = await ref.get();
+      final best     = existing.data()?['score'] as int?;
+      if (best != null && score <= best) return true;  // Not a new best
 
-      return response.statusCode == 200;
+      // Name + avatar are copied in so the leaderboard is one read
+      final user = (await FirebaseRefs.userDoc(uid).get()).data() ?? {};
+      await ref.set({
+        'user_id':     uid,
+        'name':        user['name'] ?? '',
+        'avatar_type': user['avatar_type'] ?? 'initial',
+        'avatar_data': user['avatar_data'],
+        'score':       score,
+        'total':       total,
+        'accuracy':    accuracy,
+        'max_combo':   maxCombo,
+        'grade':       grade,
+        'played_at':   Timestamp.now(),
+      });
+      return true;
     } catch (_) {
       return false;
     }
@@ -618,26 +761,73 @@ class DetectionService {
 
 
   // ── Get Leaderboard ───────────────────────────────────────────
+  /// Top 20 by best score, the user's rank and personal best.
+  /// [period] — 'weekly' (last 7 days) or anything else for all-time.
   Future<LeaderboardData?> getLeaderboard({
     String period = 'all-time',
   }) async {
     try {
-      final savedUser = await StorageService.getSavedUser();
-      if (savedUser == null) return null;
+      final uid = FirebaseRefs.uid;
+      if (uid == null) return null;
 
-      final response = await http.get(
-        Uri.parse('${AppConstants.leaderboardEndpoint}?period=$period'),
-        headers: {
-          'Authorization': 'Bearer ${savedUser.token}',
-          'Accept':        'application/json',
-        },
-      ).timeout(AppConstants.requestTimeout);
+      // One doc per player, so reading all of them stays small
+      final snap = await FirebaseRefs.challengeScores.get();
+      final totalPlayers = snap.docs.length;
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return LeaderboardData.fromJson(body);
+      var rows = snap.docs.map((d) => d.data()).toList();
+      if (period == 'weekly') {
+        final cutoff = DateTime.now().subtract(const Duration(days: 7));
+        rows = rows
+            .where((r) => (r['played_at'] as Timestamp).toDate().isAfter(cutoff))
+            .toList();
       }
-      return null;
+      rows.sort((a, b) {
+        final byScore = (b['score'] as int).compareTo(a['score'] as int);
+        if (byScore != 0) return byScore;
+        return (b['accuracy'] as num).compareTo(a['accuracy'] as num);
+      });
+
+      Map<String, dynamic> scoreJson(Map<String, dynamic> r) => {
+        'score':     r['score'],
+        'total':     r['total'],
+        'accuracy':  ((r['accuracy'] as num).toDouble() * 10).round() / 10,
+        'max_combo': r['max_combo'],
+        'grade':     r['grade'],
+        'played_at': _timestampString(r['played_at']),
+      };
+
+      final entries = <Map<String, dynamic>>[];
+      for (var i = 0; i < rows.length && i < 20; i++) {
+        final r = rows[i];
+        entries.add({
+          'rank':        i + 1,
+          'user_id':     r['user_id'],
+          'name':        r['name'],
+          'avatar_type': r['avatar_type'],
+          'avatar_data': r['avatar_data'],
+          ...scoreJson(r),
+        });
+      }
+
+      // ── User's rank + personal best ───────────────────────
+      final mineIndex = rows.indexWhere((r) => r['user_id'] == uid);
+      final mine      = mineIndex >= 0 ? rows[mineIndex] : null;
+      final int? userRank;
+      if (mine == null) {
+        userRank = null;
+      } else if (mineIndex < 20) {
+        userRank = mineIndex + 1;      // Same order as the top-20 list
+      } else {
+        // Players with a strictly higher score, plus one
+        userRank = rows.where((r) => (r['score'] as int) > (mine['score'] as int)).length + 1;
+      }
+
+      return LeaderboardData.fromJson({
+        'entries':       entries,
+        'user_rank':     userRank,
+        'personal_best': mine == null ? null : scoreJson(mine),
+        'total_players': totalPlayers,
+      });
     } catch (_) {
       return null;
     }
@@ -704,24 +894,32 @@ class DetectionService {
 
 
   // ── Helpers ───────────────────────────────────────────────────
-  String _getMimeType(String ext) {
-    switch (ext) {
-      case 'jpg':
-      case 'jpeg': return 'jpeg';
-      case 'png':  return 'png';
-      case 'webp': return 'webp';
-      default:     return 'jpeg';
-    }
+  /// Every scan of the signed-in user, newest first.
+  Future<List<Map<String, dynamic>>?> _allScans() async {
+    final uid = FirebaseRefs.uid;
+    if (uid == null) return null;
+    final snap = await FirebaseRefs.scans(uid)
+        .orderBy('scanned_at', descending: true)
+        .get();
+    return snap.docs.map((d) => d.data()).toList();
+  }
+
+  /// Local date as "2026-10-20" — the streak's day key.
+  static String _dateKey(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// "2026-10-20 14:05:09" in local time, the format screens parse.
+  static String _timestampString(Object? value) {
+    if (value is! Timestamp) return '';
+    final d = value.toDate();
+    String two(int n) => n.toString().padLeft(2, '0');
+    return '${_dateKey(d)} ${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
   }
 
   String _friendlyError(Object e) {
-    final msg = e.toString();
-    if (msg.contains('SocketException') ||
-        msg.contains('Connection refused')) {
-      return 'Cannot reach server. Check your connection.';
-    } else if (msg.contains('TimeoutException')) {
-      return 'Detection timed out. Please try again.';
-    }
+    if (e is FormatException) return e.message;
     return 'An unexpected error occurred. Please try again.';
   }
 }

@@ -7,6 +7,7 @@ backend/*.h5
 backend/*.tflite
 backend/news_cache.json
 frontend/assets/models/*.tflite
+/models/
 
 # ── Python ────────────────────────────────
 __pycache__/
@@ -30,3 +31,6 @@ frontend/pubspec.lock
 *.iml
 # Local Android SDK path
 frontend/local.properties
+
+# ── App API keys (dart-define file) ──────
+frontend/env.json

@@ -9,7 +9,8 @@
 //      even on devices where a previous account already
 //      completed the tutorial.
 //
-// Everything else is 100% UNCHANGED.
+// Firebase: verification is an emailed link, not a 6-digit
+// code. "I've verified" re-checks the account's status.
 // ============================================================
 
 import 'dart:async';
@@ -36,10 +37,6 @@ class EmailVerificationScreen extends StatefulWidget {
 class _EmailVerificationScreenState
     extends State<EmailVerificationScreen> {
 
-  final List<TextEditingController> _controllers =
-  List.generate(6, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-  List.generate(6, (_) => FocusNode());
   final _authService     = AuthService();
   final _tutorialService = TutorialService();      // ← NEW
 
@@ -54,15 +51,10 @@ class _EmailVerificationScreenState
   void initState() {
     super.initState();
     _startCooldown();
-    for (final f in _focusNodes) {
-      f.addListener(() { if (mounted) setState(() {}); });
-    }
   }
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
     _cooldownTimer?.cancel();
     super.dispose();
   }
@@ -77,22 +69,6 @@ class _EmailVerificationScreenState
         if (_resendCooldown <= 0) t.cancel();
       });
     });
-  }
-
-  String get _otp => _controllers.map((c) => c.text).join();
-
-  void _onDigitChanged(int index, String value) {
-    if (value.length == 1) {
-      if (index < 5) {
-        _focusNodes[index + 1].requestFocus();
-      } else {
-        _focusNodes[index].unfocus();
-        if (_otp.length == 6) _handleVerify();
-      }
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-    setState(() => _errorMessage = null);
   }
 
   // ── NEW: Correct tutorial routing after email verification ─
@@ -123,16 +99,10 @@ class _EmailVerificationScreenState
   }
 
   Future<void> _handleVerify() async {
-    if (_otp.length < 6) {
-      setState(() => _errorMessage = 'Please enter all 6 digits');
-      return;
-    }
     setState(() { _isVerifying = true; _errorMessage = null; });
     HapticFeedback.lightImpact();
 
-    final result = await _authService.verifyEmail(
-      email: widget.email, code: _otp,
-    );
+    final result = await _authService.verifyEmail();
 
     if (!mounted) return;
 
@@ -145,8 +115,6 @@ class _EmailVerificationScreenState
       setState(() {
         _isVerifying  = false;
         _errorMessage = result.message;
-        for (final c in _controllers) c.clear();
-        _focusNodes[0].requestFocus();
       });
     }
   }
@@ -160,14 +128,12 @@ class _EmailVerificationScreenState
       _errorMessage   = null;
       _successMessage = null;
     });
-    final result = await _authService.resendOtp(email: widget.email);
+    final result = await _authService.resendVerification();
     if (!mounted) return;
     setState(() {
       _isResending = false;
       if (result.success) {
-        _successMessage = 'A new code has been sent to your email.';
-        for (final c in _controllers) c.clear();
-        _focusNodes[0].requestFocus();
+        _successMessage = 'A new link has been sent to your email.';
         _startCooldown();
       } else {
         _errorMessage = result.message;
@@ -218,7 +184,7 @@ class _EmailVerificationScreenState
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary)),
                 const SizedBox(height: 4),
-                const Text('Verification code sent',
+                const Text('Verification link sent',
                     style: TextStyle(fontSize: 13,
                         color: AppTheme.textSecondary)),
               ],
@@ -273,67 +239,12 @@ class _EmailVerificationScreenState
                     ),
                   ),
                   const SizedBox(height: 24),
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('ENTER 6-DIGIT CODE',
-                        style: TextStyle(fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 1.0)),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: List.generate(6, (i) {
-                      final hasFocus = _focusNodes[i].hasFocus;
-                      final hasValue = _controllers[i].text.isNotEmpty;
-                      return Expanded(
-                        child: Container(
-                          height: 56,
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          decoration: BoxDecoration(
-                            color: hasFocus
-                                ? AppTheme.primary.withValues(alpha: 0.08)
-                                : AppTheme.surface2,
-                            borderRadius:
-                            BorderRadius.circular(AppTheme.radiusM),
-                            border: Border.all(
-                              color: _errorMessage != null
-                                  ? AppTheme.error
-                                  : hasFocus
-                                  ? AppTheme.primary
-                                  : hasValue
-                                  ? AppTheme.primary.withValues(alpha: 0.4)
-                                  : AppTheme.surfaceBorder,
-                              width: hasFocus ? 2 : 1,
-                            ),
-                          ),
-                          child: TextField(
-                            controller:        _controllers[i],
-                            focusNode:         _focusNodes[i],
-                            textAlign:         TextAlign.center,
-                            textAlignVertical: TextAlignVertical.center,
-                            keyboardType:      TextInputType.number,
-                            maxLength:         1,
-                            cursorColor:       AppTheme.primary,
-                            style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.w800,
-                              color: Colors.white, height: 1,
-                            ),
-                            decoration: const InputDecoration(
-                              counterText: '', border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              filled: false, contentPadding: EdgeInsets.zero,
-                            ),
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            onChanged: (v) => _onDigitChanged(i, v),
-                            onTap:     () => setState(() {}),
-                          ),
-                        ),
-                      );
-                    }),
+                  const Text(
+                    'Open the email we sent and tap the verification link. '
+                    "Then come back and tap I've verified.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14,
+                        color: AppTheme.textSecondary, height: 1.5),
                   ),
                   const SizedBox(height: 20),
                   if (_errorMessage != null) ...[
@@ -360,7 +271,7 @@ class _EmailVerificationScreenState
                           ? const SizedBox(width: 22, height: 22,
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2))
-                          : const Text('Verify Email',
+                          : const Text("I've verified",
                           style: TextStyle(fontSize: 16,
                               fontWeight: FontWeight.w700)),
                     ),
@@ -382,7 +293,7 @@ class _EmailVerificationScreenState
                         child: Text(
                           _resendCooldown > 0
                               ? 'Resend in ${_resendCooldown}s'
-                              : 'Resend code',
+                              : 'Resend link',
                           style: TextStyle(
                             fontSize: 14, fontWeight: FontWeight.w700,
                             color: _resendCooldown > 0
@@ -407,7 +318,7 @@ class _EmailVerificationScreenState
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Check spam if not received. Code expires in 15 minutes.',
+                          'Check spam if not received. The link opens in your browser.',
                           style: TextStyle(fontSize: 12,
                               color: AppTheme.textSecondary, height: 1.4),
                         ),

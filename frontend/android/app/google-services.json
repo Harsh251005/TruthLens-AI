@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "479693170317",
+    "project_id": "truthlens-ai-hd",
+    "storage_bucket": "truthlens-ai-hd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479693170317:android:9ba5f882f9bcf9769da4c4",
+        "android_client_info": {
+          "package_name": "com.example.frontend"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmmTwUmzty-ppEsengOIwHjwX_x59Nhyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:479693170317:android:f791be28f9bdf7ed9da4c4",
+        "android_client_info": {
+          "package_name": "com.harsh.truthlens"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmmTwUmzty-ppEsengOIwHjwX_x59Nhyo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

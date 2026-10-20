@@ -11,7 +11,7 @@
 //     locally without a full re-login
 //
 // Key layout in SharedPreferences:
-//   user_id          → int
+//   user_uid         → String (Firebase Auth uid)
 //   user_name        → String
 //   user_email       → String
 //   user_token       → String
@@ -19,13 +19,14 @@
 //   user_avatar_data → String? (avatar ID or base64; absent for 'initial')
 // ============================================================
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class StorageService {
 
   // ── SharedPreferences keys ─────────────────────────────────────
-  static const _kId          = 'user_id';
+  static const _kId          = 'user_uid';
   static const _kName        = 'user_name';
   static const _kEmail       = 'user_email';
   static const _kToken       = 'user_token';
@@ -41,7 +42,7 @@ class StorageService {
   static Future<void> saveUser(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
 
-    await prefs.setInt   (_kId,         user.id);
+    await prefs.setString(_kId,         user.id);
     await prefs.setString(_kName,       user.name);
     await prefs.setString(_kEmail,      user.email);
     await prefs.setString(_kToken,      user.token);
@@ -62,7 +63,7 @@ class StorageService {
   static Future<UserModel?> getSavedUser() async {
     final prefs = await SharedPreferences.getInstance();
 
-    final id         = prefs.getInt(_kId);
+    final id         = prefs.getString(_kId);
     final name       = prefs.getString(_kName);
     final email      = prefs.getString(_kEmail);
     final token      = prefs.getString(_kToken);
@@ -78,6 +79,14 @@ class StorageService {
     // Guard: an unverified session saved by old code must not auto-login.
     // Clear it so the user goes through signup + verification properly.
     if (!isVerified) {
+      await clearUser();
+      return null;
+    }
+
+    // The Firebase session is the real login; the prefs copy is only
+    // a cache. Wait for Firebase to restore it before trusting prefs.
+    final firebaseUser = await FirebaseAuth.instance.authStateChanges().first;
+    if (firebaseUser == null || firebaseUser.uid != id) {
       await clearUser();
       return null;
     }
@@ -126,6 +135,7 @@ class StorageService {
     await prefs.remove(_kToken);
     await prefs.remove(_kAvatarType);
     await prefs.remove(_kAvatarData);
+    await FirebaseAuth.instance.signOut();
   }
 
   // ── Onboarding ────────────────────────────────────────────────
