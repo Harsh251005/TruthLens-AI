@@ -54,7 +54,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAmmTwUmzty-ppEsengOIwHjwX_x59Nhyo',
-    appId: '1:479693170317:android:9ba5f882f9bcf9769da4c4',
+    appId: '1:479693170317:android:f791be28f9bdf7ed9da4c4',
     messagingSenderId: '479693170317',
     projectId: 'truthlens-ai-hd',
     storageBucket: 'truthlens-ai-hd.firebasestorage.app',

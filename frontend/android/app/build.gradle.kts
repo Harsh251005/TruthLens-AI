@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -7,8 +9,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Release signing: android/key.properties (gitignored) points at a keystore kept outside the repo.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 android {
-    namespace = "com.example.frontend"
+    namespace = "com.harsh.truthlens"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -19,16 +27,27 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.frontend"
+        applicationId = "com.harsh.truthlens"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // Falls back to debug keys when key.properties is absent (e.g. a fresh clone).
+            signingConfig = if (keystoreProperties.isEmpty) signingConfigs.getByName("debug")
+                            else signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
