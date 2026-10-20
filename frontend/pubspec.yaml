@@ -59,6 +59,8 @@ flutter:
   assets:
     - assets/images/
     - assets/models/
+    - assets/challenge/real/
+    - assets/challenge/fake/
 
 flutter_launcher_icons:
   android: true
